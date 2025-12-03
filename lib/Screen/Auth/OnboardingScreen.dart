@@ -1,0 +1,184 @@
+// dart
+import 'package:flutter/material.dart';
+import 'LoginScreen.dart';
+import '../home/home_screen.dart';
+
+class OnboardingScreen extends StatelessWidget {
+  const OnboardingScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              // Logo with Gradient
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF6A1E55), Color(0xFFA64D79)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Icon(
+                  Icons.download_rounded,
+                  color: Colors.white,
+                  size: 50,
+                ),
+              ),
+              const SizedBox(height: 30),
+              const Text(
+                "TapMate",
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF6A1E55),
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                "Download, Share & Connect",
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 50),
+
+              // Feature List
+              Column(
+                children: [
+                  _featureTile(
+                    Icons.flash_on,
+                    "Lightning-fast downloads",
+                    "Download videos in seconds with our optimized technology",
+                  ),
+                  const SizedBox(height: 15),
+                  _featureTile(
+                    Icons.handshake,
+                    "Connect with creators",
+                    "Follow and interact with your favorite creators",
+                  ),
+                  const SizedBox(height: 15),
+                  _featureTile(
+                    Icons.sync,
+                    "Sync across devices",
+                    "Access your downloads anywhere, anytime",
+                  ),
+                ],
+              ),
+
+              const Spacer(),
+
+              // Get Started Button with Gradient
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const LoginScreen()),
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6A1E55), Color(0xFFA64D79)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        "Get Started",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 15),
+
+              // Continue as Guest
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (context) => const HomeScreen()),
+                  );
+                },
+                child: const Text(
+                  "Continue as Guest",
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _featureTile(IconData icon, String title, String subtitle) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0E5FF),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, color: const Color(0xFFA64D79)),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: Colors.black54,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
