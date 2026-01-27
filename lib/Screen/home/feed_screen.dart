@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tapmate/Screen/Auth/LoginScreen.dart';
-import 'profile_screen.dart';
-import 'comments_screen.dart';
-import 'storage_selection_dialog.dart';
-import 'download_progress_screen.dart';
+import 'package:tapmate/Screen/home/comments_screen.dart';
+import 'package:tapmate/Screen/home/download_progress_screen.dart';
+import 'package:tapmate/Screen/home/other_user_profile_screen.dart';
+import 'package:tapmate/Screen/home/storage_selection_dialog.dart';
+import 'package:tapmate/Screen/services/dummy_data_service.dart';
 import '../../auth_provider.dart';
 import '../../theme_provider.dart';
 
@@ -21,64 +22,313 @@ class FeedScreen extends StatefulWidget {
 }
 
 class _FeedScreenState extends State<FeedScreen> {
-  String? _selectedContentId;
-  bool _isContentSelected = false;
+  final List<Map<String, dynamic>> _feedItems = [];
+  bool _isLoading = false;
 
-  // Sample feed content
-  final List<Map<String, dynamic>> _feedItems = [
-    {
-      'id': '1',
-      'user': 'John Doe',
-      'avatar': '👤',
-      'title': 'Amazing sunset video from my trip',
-      'thumbnail': '🌅',
-      'platform': 'Instagram',
-      'likes': 1250,
-      'comments': 89,
-      'shares': 45,
-      'time': '2h ago',
-      'isLiked': false,
-    },
-    {
-      'id': '2',
-      'user': 'Sarah Smith',
-      'avatar': '👩',
-      'title': 'Check out this cooking tutorial!',
-      'thumbnail': '👨‍🍳',
-      'platform': 'YouTube',
-      'likes': 3420,
-      'comments': 234,
-      'shares': 156,
-      'time': '5h ago',
-      'isLiked': false,
-    },
-    {
-      'id': '3',
-      'user': 'Mike Johnson',
-      'avatar': '🧑',
-      'title': 'Dance challenge video',
-      'thumbnail': '💃',
-      'platform': 'TikTok',
-      'likes': 8900,
-      'comments': 567,
-      'shares': 890,
-      'time': '1d ago',
-      'isLiked': false,
-    },
-    {
-      'id': '4',
-      'user': 'Emma Wilson',
-      'avatar': '👱‍♀️',
-      'title': 'Travel vlog from Japan',
-      'thumbnail': '✈️',
-      'platform': 'YouTube',
-      'likes': 5670,
-      'comments': 345,
-      'shares': 234,
-      'time': '2d ago',
-      'isLiked': false,
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadFeedItems();
+  }
+
+  Future<void> _loadFeedItems() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    final posts = DummyDataService.getFeedPosts();
+
+    setState(() {
+      _feedItems.clear();
+      _feedItems.addAll(posts);
+      _isLoading = false;
+    });
+  }
+
+  void _toggleLike(int index) {
+    setState(() {
+      final post = _feedItems[index];
+      final isLiked = post['is_liked'] ?? false;
+
+      if (isLiked) {
+        post['is_liked'] = false;
+        post['likes_count'] = (post['likes_count'] as int) - 1;
+      } else {
+        post['is_liked'] = true;
+        post['likes_count'] = (post['likes_count'] as int) + 1;
+      }
+    });
+  }
+
+  void _viewUserProfile(String userId) {
+    final user = DummyDataService.getUserById(userId);
+    if (user != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => OtherUserProfileScreen(
+            userId: userId,
+            userName: user['full_name'],
+            userAvatar: user['avatar'],
+          ),
+        ),
+      );
+    }
+  }
+
+  void _sharePost(Map<String, dynamic> post) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Share Post',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: darkPurple,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: const Icon(Icons.share, color: Colors.blue, size: 28),
+              title: const Text('Share via...', style: TextStyle(fontSize: 16)),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Shared via platform')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.link, color: Colors.green, size: 28),
+              title: const Text('Copy Link', style: TextStyle(fontSize: 16)),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Link copied to clipboard')),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.download, color: primaryColor, size: 28),
+              title: const Text('Download & Share', style: TextStyle(fontSize: 16)),
+              onTap: () {
+                Navigator.pop(context);
+                _downloadContent(post);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _downloadContent(Map<String, dynamic> content) {
+    showDialog(
+      context: context,
+      builder: (context) => StorageSelectionDialog(
+        platformName: content['platform'],
+        contentId: content['id'],
+        contentTitle: content['caption'],
+        onDeviceStorageSelected: (path, format, quality) {
+          Navigator.pop(context);
+          _startDownload(content, path, format, quality, true);
+        },
+        onAppStorageSelected: (format, quality) {
+          Navigator.pop(context);
+          _startDownload(content, null, format, quality, false);
+        },
+      ),
+    );
+  }
+
+  void _startDownload(Map<String, dynamic> content, String? path, String format, String quality, bool isDeviceStorage) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DownloadProgressScreen(
+          platformName: content['platform'],
+          contentTitle: '${content['caption']} ($format - $quality)',
+          storagePath: path,
+          isDeviceStorage: isDeviceStorage,
+          fromPlatformScreen: false,
+          sourcePlatform: 'feed',
+        ),
+      ),
+    );
+  }
+
+  void _showPostOptions(Map<String, dynamic> post) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.save_alt, color: primaryColor, size: 28),
+              title: Text('Save Post', style: TextStyle(fontSize: 16)),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Post saved')),
+                );
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.notifications_off, color: primaryColor, size: 28),
+              title: Text('Mute Notifications', style: TextStyle(fontSize: 16)),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Notifications muted')),
+                );
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: Icon(Icons.report, color: Colors.red, size: 28),
+              title: Text('Report Post', style: TextStyle(fontSize: 16, color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _showReportDialog(post);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showReportDialog(Map<String, dynamic> post) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Report Post'),
+        content: const Text('Please select a reason for reporting this post.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Post reported. Thank you for your feedback.')),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Report'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label, bool isActive, BuildContext context, bool isGuest, bool isDarkMode) {
+    final bool isLocked = isGuest && (label == 'Message' || label == 'Profile');
+
+    return GestureDetector(
+      onTap: isLocked
+          ? () {
+        _showGuestFeatureDialog(label);
+      }
+          : () {
+        if (label == 'Home') {
+          Navigator.pushReplacementNamed(context, '/home');
+        } else if (label == 'Discover') {
+          Navigator.pushReplacementNamed(context, '/search');
+        } else if (label == 'Feed') {
+          Navigator.pushReplacementNamed(context, '/feed');
+        } else if (label == 'Message') {
+          Navigator.pushReplacementNamed(context, '/chat');
+        } else if (label == 'Profile') {
+          Navigator.pushReplacementNamed(context, '/profile');
+        }
+      },
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Stack(
+            children: [
+              Icon(
+                icon,
+                color: isActive ? primaryColor : (isDarkMode ? Colors.grey[600] : Colors.grey),
+                size: 24,
+              ),
+              if (isLocked)
+                Positioned(
+                  top: -2,
+                  right: -2,
+                  child: Container(
+                    padding: const EdgeInsets.all(1),
+                    decoration: BoxDecoration(
+                      color: isDarkMode ? Colors.black : Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.lock,
+                      size: 10,
+                      color: Colors.orange,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: isActive ? primaryColor : (isDarkMode ? Colors.grey[600] : Colors.grey),
+              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showGuestFeatureDialog(String feature) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('$feature Locked'),
+        content: Text('Sign up to $feature and interact with posts.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Later'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+            child: const Text('Sign Up', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -93,7 +343,7 @@ class _FeedScreenState extends State<FeedScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // HEADER - FIXED HEIGHT
+            // HEADER
             Container(
               width: double.infinity,
               padding: EdgeInsets.symmetric(
@@ -132,7 +382,7 @@ class _FeedScreenState extends State<FeedScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              isGuest ? 'Community Feed' : 'Community Feed',
+                              isGuest ? 'Community Feed' : 'Your Feed',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 24,
@@ -144,8 +394,8 @@ class _FeedScreenState extends State<FeedScreen> {
                             const SizedBox(height: 4),
                             Text(
                               isGuest
-                                  ? 'Sign up to download videos'
-                                  : 'Discover content from the community',
+                                  ? 'Sign up to interact with posts'
+                                  : 'Discover content from your network',
                               style: const TextStyle(
                                 color: Color(0xE6FFFFFF),
                                 fontSize: 13,
@@ -169,7 +419,7 @@ class _FeedScreenState extends State<FeedScreen> {
                             ),
                           IconButton(
                             icon: Icon(
-                              isGuest ? Icons.info_outline : Icons.share,
+                              isGuest ? Icons.info_outline : Icons.add_circle_outline,
                               color: Colors.white,
                               size: 22,
                             ),
@@ -177,10 +427,12 @@ class _FeedScreenState extends State<FeedScreen> {
                               if (isGuest) {
                                 _showGuestInfo();
                               } else {
-                                _showShareOptions();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Create post feature coming soon!')),
+                                );
                               }
                             },
-                            tooltip: isGuest ? 'Info' : 'Share',
+                            tooltip: isGuest ? 'Info' : 'Create Post',
                           ),
                         ],
                       ),
@@ -234,9 +486,54 @@ class _FeedScreenState extends State<FeedScreen> {
               ),
             ),
 
-            // Feed Content - SIMPLE
+            // Feed Content
             Expanded(
-              child: isGuest ? _buildGuestFeed(isDarkMode) : _buildCommunityFeed(isDarkMode),
+              child: RefreshIndicator(
+                onRefresh: _loadFeedItems,
+                color: primaryColor,
+                child: _isLoading
+                    ? Center(
+                  child: CircularProgressIndicator(color: primaryColor),
+                )
+                    : _feedItems.isEmpty
+                    ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.feed_outlined,
+                        size: 80,
+                        color: isDarkMode ? Colors.grey[400] : Colors.grey[300],
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'No posts yet',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? Colors.white : darkPurple,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        isGuest
+                            ? 'Sign up to see content from the community'
+                            : 'Follow people to see their posts here',
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+                    : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _feedItems.length,
+                  itemBuilder: (context, index) {
+                    return _buildFeedItem(_feedItems[index], index, isGuest, isDarkMode);
+                  },
+                ),
+              ),
             ),
 
             // Bottom Navigation Bar
@@ -275,83 +572,9 @@ class _FeedScreenState extends State<FeedScreen> {
     );
   }
 
-  // ================== GUEST FEED ==================
-  Widget _buildGuestFeed(bool isDarkMode) {
-    return Column(
-      children: [
-        // Guest message banner
-        Container(
-          padding: const EdgeInsets.all(16),
-          margin: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isDarkMode ? const Color(0xFF2C2C2C) : const Color(0xFFF8F9FA),
-            borderRadius: BorderRadius.circular(15),
-            border: Border.all(color: primaryColor.withOpacity(0.2)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.info_outline, color: primaryColor, size: 28),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Guest Mode',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Color(0xFF3B1C32),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Sign up to download videos and access all features',
-                      style: TextStyle(fontSize: 13, color: Colors.grey),
-                      maxLines: 2,
-                    ),
-                    const SizedBox(height: 10),
-                    ElevatedButton(
-                      onPressed: _showSignUpPrompt,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                        minimumSize: const Size(0, 36),
-                      ),
-                      child: const Text(
-                        'Sign Up Free',
-                        style: TextStyle(fontSize: 13, color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+  Widget _buildFeedItem(Map<String, dynamic> item, int index, bool isGuest, bool isDarkMode) {
+    final isLiked = item['is_liked'] ?? false;
 
-        // REAL COMMUNITY FEED (same as logged in users, but with locked download)
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            itemCount: _feedItems.length,
-            itemBuilder: (context, index) {
-              return _buildGuestFeedItem(_feedItems[index], isDarkMode);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGuestFeedItem(Map<String, dynamic> item, bool isDarkMode) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
@@ -362,7 +585,7 @@ class _FeedScreenState extends State<FeedScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withOpacity(isDarkMode ? 0.2 : 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -377,27 +600,10 @@ class _FeedScreenState extends State<FeedScreen> {
             child: Row(
               children: [
                 GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ProfileScreen(
-                          userName: item['user'] as String,
-                          userAvatar: item['avatar'] as String,
-                          followers: 1250,
-                          following: 450,
-                          posts: 23,
-                        ),
-                      ),
-                    );
-                  },
+                  onTap: () => _viewUserProfile(item['user_id']),
                   child: CircleAvatar(
                     radius: 25,
-                    backgroundColor: const Color(0x33A64D79),
-                    child: Text(
-                      item['avatar'] as String,
-                      style: const TextStyle(fontSize: 24),
-                    ),
+                    backgroundImage: NetworkImage(item['user_profile_pic']),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -406,26 +612,13 @@ class _FeedScreenState extends State<FeedScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ProfileScreen(
-                                userName: item['user'] as String,
-                                userAvatar: item['avatar'] as String,
-                                followers: 1250,
-                                following: 450,
-                                posts: 23,
-                              ),
-                            ),
-                          );
-                        },
+                        onTap: () => _viewUserProfile(item['user_id']),
                         child: Text(
-                          item['user'] as String,
+                          item['user_name'],
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: isDarkMode ? Colors.white : const Color(0xFF3B1C32),
+                            color: isDarkMode ? Colors.white : darkPurple,
                           ),
                         ),
                       ),
@@ -434,24 +627,24 @@ class _FeedScreenState extends State<FeedScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: const Color(0x1AA64D79),
+                              color: _getPlatformColor(item['platform']).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              item['platform'] as String,
-                              style: const TextStyle(
+                              item['platform'],
+                              style: TextStyle(
                                 fontSize: 10,
-                                color: primaryColor,
+                                color: _getPlatformColor(item['platform']),
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            item['time'] as String,
+                            item['created_at'],
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[600],
+                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                             ),
                           ),
                         ],
@@ -460,685 +653,334 @@ class _FeedScreenState extends State<FeedScreen> {
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.more_vert, color: isDarkMode ? Colors.white : const Color(0xFF3B1C32)),
-                  onPressed: () {},
+                  icon: Icon(Icons.more_vert, color: isDarkMode ? Colors.grey[400] : darkPurple),
+                  onPressed: () => _showPostOptions(item),
                 ),
               ],
+            ),
+          ),
+
+          // Post Caption
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              item['caption'],
+              style: TextStyle(
+                fontSize: 14,
+                color: isDarkMode ? Colors.grey[300] : darkPurple,
+                height: 1.5,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
 
           // Content Thumbnail
           GestureDetector(
             onTap: () {
-              setState(() {
-                _selectedContentId = item['id'] as String;
-                _isContentSelected = true;
-              });
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CommentsScreen(
+                    contentTitle: item['caption'],
+                    initialCommentCount: item['comments_count'],
+                  ),
+                ),
+              );
             },
             child: Container(
               height: 250,
               width: double.infinity,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    primaryColor.withOpacity(0.3),
-                    primaryColor.withOpacity(0.1),
-                  ],
-                ),
+                border: Border.all(color: Colors.grey[200]!),
               ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      item['thumbnail'] as String,
-                      style: const TextStyle(fontSize: 80),
-                    ),
-                    const SizedBox(height: 10),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        item['title'] as String,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: isDarkMode ? Colors.white : const Color(0xFF3B1C32),
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Actions with LOCKED download button for guest
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                // Like button (enabled)
-                _buildActionButton(
-                  icon: item['isLiked'] == true ? Icons.favorite : Icons.favorite_border,
-                  label: _formatNumber(item['likes'] as int),
-                  onTap: () {
-                    setState(() {
-                      if (item['isLiked'] == true) {
-                        item['isLiked'] = false;
-                        item['likes'] = (item['likes'] as int) - 1;
-                      } else {
-                        item['isLiked'] = true;
-                        item['likes'] = (item['likes'] as int) + 1;
-                      }
-                    });
-                  },
-                  isLiked: item['isLiked'] == true,
-                  isDarkMode: isDarkMode,
-                ),
-
-                // Comment button (enabled)
-                _buildActionButton(
-                  icon: Icons.comment_outlined,
-                  label: _formatNumber(item['comments'] as int),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => CommentsScreen(
-                          contentTitle: item['title'] as String,
-                          initialCommentCount: item['comments'] as int,
-                        ),
-                      ),
-                    );
-                  },
-                  isDarkMode: isDarkMode,
-                ),
-
-                // Share button (enabled)
-                _buildActionButton(
-                  icon: Icons.share_outlined,
-                  label: _formatNumber(item['shares'] as int),
-                  onTap: () {
-                    _shareContent(item);
-                  },
-                  isDarkMode: isDarkMode,
-                ),
-
-                // LOCKED Download button for guest
-                GestureDetector(
-                  onTap: () {
-                    _showFeatureLockedDialog('Download');
-                  },
-                  child: Column(
-                    children: [
-                      Stack(
-                        children: [
-                          Icon(
-                            Icons.download_outlined,
-                            color: Colors.grey[400],
-                            size: 24,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Post Image
+                  Image.network(
+                    item['thumbnail_url'],
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        color: primaryColor.withOpacity(0.1),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: primaryColor,
                           ),
-                          Positioned(
-                            top: -4,
-                            right: -4,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                color: isDarkMode ? Colors.black : Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.lock,
-                                size: 12,
-                                color: Colors.orange,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Download',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[400],
-                          fontWeight: FontWeight.w500,
                         ),
-                      ),
-                    ],
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: primaryColor.withOpacity(0.2),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.videocam, size: 40, color: primaryColor),
+                              const SizedBox(height: 10),
+                              Text(
+                                'Video Preview',
+                                style: TextStyle(color: primaryColor),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  // ================== COMMUNITY FEED ==================
-  Widget _buildCommunityFeed(bool isDarkMode) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(20),
-      itemCount: _feedItems.length,
-      itemBuilder: (context, index) {
-        return _buildFeedItem(_feedItems[index], isDarkMode);
-      },
-    );
-  }
-
-  Widget _buildFeedItem(Map<String, dynamic> item, bool isDarkMode) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 20),
-      decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: darkPurple.withOpacity(0.1),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // User Header
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ProfileScreen(
-                          userName: item['user'] as String,
-                          userAvatar: item['avatar'] as String,
-                          followers: 1250,
-                          following: 450,
-                          posts: 23,
-                        ),
-                      ),
-                    );
-                  },
-                  child: CircleAvatar(
-                    radius: 25,
-                    backgroundColor: const Color(0x33A64D79),
-                    child: Text(
-                      item['avatar'] as String,
-                      style: const TextStyle(fontSize: 24),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ProfileScreen(
-                                userName: item['user'] as String,
-                                userAvatar: item['avatar'] as String,
-                                followers: 1250,
-                                following: 450,
-                                posts: 23,
-                              ),
-                            ),
-                          );
-                        },
-                        child: Text(
-                          item['user'] as String,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: isDarkMode ? Colors.white : const Color(0xFF3B1C32),
-                          ),
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0x1AA64D79),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              item['platform'] as String,
-                              style: const TextStyle(
-                                fontSize: 10,
-                                color: primaryColor,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            item['time'] as String,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.more_vert, color: isDarkMode ? Colors.white : const Color(0xFF3B1C32)),
-                  onPressed: () {},
-                ),
-              ],
-            ),
-          ),
-
-          // Content Thumbnail
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedContentId = item['id'] as String;
-                _isContentSelected = true;
-              });
-            },
-            child: Container(
-              height: 250,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    primaryColor.withOpacity(0.3),
-                    primaryColor.withOpacity(0.1),
-                  ],
-                ),
-                border: Border.all(
-                  color: _selectedContentId == item['id']
-                      ? primaryColor
-                      : Colors.transparent,
-                  width: _selectedContentId == item['id'] ? 3 : 0,
-                ),
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      item['thumbnail'] as String,
-                      style: const TextStyle(fontSize: 80),
-                    ),
-                    const SizedBox(height: 10),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Text(
-                        item['title'] as String,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: isDarkMode ? Colors.white : const Color(0xFF3B1C32),
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (_selectedContentId == item['id'])
-                      Container(
-                        margin: const EdgeInsets.only(top: 10),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  // Video overlay
+                  if (item['is_video'] == true)
+                    Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: primaryColor,
-                          borderRadius: BorderRadius.circular(20),
+                          color: Colors.black.withOpacity(0.6),
+                          shape: BoxShape.circle,
                         ),
-                        child: const Text(
-                          'Selected',
-                          style: TextStyle(
+                        child: const Icon(
+                          Icons.play_arrow,
+                          color: Colors.white,
+                          size: 40,
+                        ),
+                      ),
+                    ),
+
+                  // Duration overlay for videos
+                  if (item['is_video'] == true)
+                    Positioned(
+                      bottom: 10,
+                      right: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          item['duration'],
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+                    ),
 
-          // Actions
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildActionButton(
-                  icon: item['isLiked'] == true ? Icons.favorite : Icons.favorite_border,
-                  label: _formatNumber(item['likes'] as int),
-                  onTap: () {
-                    setState(() {
-                      if (item['isLiked'] == true) {
-                        item['isLiked'] = false;
-                        item['likes'] = (item['likes'] as int) - 1;
-                      } else {
-                        item['isLiked'] = true;
-                        item['likes'] = (item['likes'] as int) + 1;
-                      }
-                    });
-                  },
-                  isLiked: item['isLiked'] == true,
-                  isDarkMode: isDarkMode,
-                ),
-                _buildActionButton(
-                  icon: Icons.comment_outlined,
-                  label: _formatNumber(item['comments'] as int),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => CommentsScreen(
-                          contentTitle: item['title'] as String,
-                          initialCommentCount: item['comments'] as int,
+                  // Platform badge
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getPlatformColor(item['platform']),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        item['platform'],
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    );
-                  },
-                  isDarkMode: isDarkMode,
-                ),
-                _buildActionButton(
-                  icon: Icons.share_outlined,
-                  label: _formatNumber(item['shares'] as int),
-                  onTap: () {
-                    _shareContent(item);
-                  },
-                  isDarkMode: isDarkMode,
-                ),
-                _buildActionButton(
-                  icon: Icons.download_outlined,
-                  label: 'Download',
-                  onTap: () {
-                    setState(() {
-                      _selectedContentId = item['id'] as String;
-                      _isContentSelected = true;
-                    });
-                    _showStorageSelectionDialog(item);
-                  },
-                  isDarkMode: isDarkMode,
-                ),
-              ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
-      ),
-    );
-  }
 
-  // ================== HELPER WIDGETS ==================
-  Widget _buildStatCard({
-    required IconData icon,
-    required String title,
-    required String value,
-    required Color color,
-    bool isLocked = false,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Color.alphaBlend(color.withOpacity(0.1), Colors.white),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  icon,
-                  color: isLocked ? Colors.grey : color,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: isLocked ? Colors.grey : color,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 5),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-          if (isLocked)
-            Positioned(
-              top: 8,
-              right: 8,
-              child: Icon(
-                Icons.lock,
-                size: 14,
-                color: Colors.grey,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeatureCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool isLocked,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0x1AA64D79),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              icon,
-              color: primaryColor,
-              size: 20,
-            ),
-          ),
-          const SizedBox(width: 15),
-          Expanded(
+          // Stats and Actions
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF3B1C32),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                // Stats row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.remove_red_eye, size: 16, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          item['views'],
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Icon(Icons.favorite, size: 16, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatNumber(item['likes_count']),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Icon(Icons.comment, size: 16, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatNumber(item['comments_count']),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (item['can_download'] == true && !isGuest)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'Downloadable',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: primaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+
+                const SizedBox(height: 12),
+
+                // Action buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Like button
+                    Expanded(
+                      child: TextButton.icon(
+                        onPressed: isGuest
+                            ? () => _showGuestFeatureDialog('Like posts')
+                            : () => _toggleLike(index),
+                        icon: Icon(
+                          isLiked ? Icons.favorite : Icons.favorite_border,
+                          color: isLiked ? Colors.red : primaryColor,
+                          size: 20,
+                        ),
+                        label: Text(
+                          isLiked ? 'Liked' : 'Like',
+                          style: TextStyle(
+                            color: isLiked ? Colors.red : primaryColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                        ),
+                      ),
+                    ),
+
+                    // Comment button
+                    Expanded(
+                      child: TextButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CommentsScreen(
+                                contentTitle: item['caption'],
+                                initialCommentCount: item['comments_count'],
+                              ),
+                            ),
+                          );
+                        },
+                        icon: Icon(Icons.comment_outlined, color: primaryColor, size: 20),
+                        label: Text(
+                          'Comment',
+                          style: TextStyle(
+                            color: primaryColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                        ),
+                      ),
+                    ),
+
+                    // Share button
+                    Expanded(
+                      child: TextButton.icon(
+                        onPressed: () => _sharePost(item),
+                        icon: Icon(Icons.share_outlined, color: primaryColor, size: 20),
+                        label: Text(
+                          'Share',
+                          style: TextStyle(
+                            color: primaryColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                        ),
+                      ),
+                    ),
+
+                    // Download button
+                    if (item['can_download'] == true)
+                      Expanded(
+                        child: TextButton.icon(
+                          onPressed: isGuest
+                              ? () => _showGuestFeatureDialog('Download')
+                              : () => _downloadContent(item),
+                          icon: Icon(Icons.download_outlined, color: primaryColor, size: 20),
+                          label: Text(
+                            'Download',
+                            style: TextStyle(
+                              color: primaryColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ),
           ),
-          Icon(
-            isLocked ? Icons.lock : Icons.check_circle,
-            color: isLocked ? Colors.orange : Colors.green,
-            size: 20,
-          ),
         ],
       ),
     );
   }
 
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    bool isLiked = false,
-    bool isDarkMode = false,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Icon(
-            icon,
-            color: isLiked ? Colors.red : primaryColor,
-            size: 24,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: isLiked ? Colors.red : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
-              fontWeight: FontWeight.w500,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(
-      IconData icon,
-      String label,
-      bool isActive,
-      BuildContext context,
-      bool isGuest,
-      bool isDarkMode,
-      ) {
-    final bool isLocked = isGuest && (label == 'Message' || label == 'Profile');
-
-    return GestureDetector(
-      onTap: isLocked
-          ? () {
-        _showFeatureLockedDialog(label);
-      }
-          : () {
-        if (label == 'Home') {
-          Navigator.pushReplacementNamed(context, '/home');
-        } else if (label == 'Discover') {
-          Navigator.pushReplacementNamed(context, '/search');
-        } else if (label == 'Feed') {
-          Navigator.pushReplacementNamed(context, '/feed');
-        } else if (label == 'Message') {
-          Navigator.pushReplacementNamed(context, '/chat');
-        } else if (label == 'Profile') {
-          Navigator.pushReplacementNamed(context, '/profile');
-        }
-      },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Stack(
-            children: [
-              Icon(
-                icon,
-                color: isActive ? primaryColor : (isDarkMode ? Colors.grey[600] : Colors.grey),
-                size: 24,
-              ),
-              if (isLocked)
-                Positioned(
-                  top: -2,
-                  right: -2,
-                  child: Container(
-                    padding: const EdgeInsets.all(1),
-                    decoration: BoxDecoration(
-                      color: isDarkMode ? Colors.black : Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.lock,
-                      size: 10,
-                      color: Colors.orange,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              color: isActive ? primaryColor : (isDarkMode ? Colors.grey[600] : Colors.grey),
-              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ================== HELPER FUNCTIONS ==================
   String _formatNumber(int number) {
     if (number >= 1000) {
       return '${(number / 1000).toStringAsFixed(1)}K';
     }
     return number.toString();
+  }
+
+  Color _getPlatformColor(String platform) {
+    switch (platform.toLowerCase()) {
+      case 'youtube':
+        return const Color(0xFFFF0000);
+      case 'tiktok':
+        return const Color(0xFF000000);
+      case 'instagram':
+        return const Color(0xFFE4405F);
+      default:
+        return primaryColor;
+    }
   }
 
   void _showGuestInfo() {
@@ -1148,43 +990,16 @@ class _FeedScreenState extends State<FeedScreen> {
         title: const Text('Guest Mode'),
         content: const Text(
           'You are browsing in guest mode. Sign up to:\n\n'
-              '• Download unlimited videos\n'
-              '• Access community feed\n'
-              '• Save videos to cloud\n'
-              '• Chat with other users\n'
-              '• Create your profile',
+              '• Like and comment on posts\n'
+              '• Download videos\n'
+              '• Share posts\n'
+              '• Follow users\n'
+              '• Create your own posts',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
-            child: const Text('Sign Up', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showFeatureLockedDialog(String feature) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('$feature Locked'),
-        content: Text('Sign up to access $feature and all premium features.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Later'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1221,12 +1036,12 @@ class _FeedScreenState extends State<FeedScreen> {
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF3B1C32),
+                color: darkPurple,
               ),
             ),
             const SizedBox(height: 10),
             const Text(
-              'Sign up to unlock all features and start downloading!',
+              'Sign up to unlock all features and start interacting!',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey),
             ),
@@ -1267,163 +1082,6 @@ class _FeedScreenState extends State<FeedScreen> {
               ),
             ),
             SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showStorageSelectionDialog([Map<String, dynamic>? item]) {
-    final contentItem = item ?? _feedItems.firstWhere(
-          (i) => i['id'] == _selectedContentId,
-      orElse: () => _feedItems[0],
-    );
-
-    showDialog(
-      context: context,
-      builder: (context) => StorageSelectionDialog(
-        platformName: contentItem['platform'] as String,
-        contentId: contentItem['id'] as String,
-        contentTitle: contentItem['title'] as String,
-        onDeviceStorageSelected: (path, format, quality) {
-          Navigator.pop(context);
-          _handleDeviceStorageDownload(path, format, quality, contentItem);
-        },
-        onAppStorageSelected: (format, quality) {
-          Navigator.pop(context);
-          _handleAppStorageDownload(format, quality, contentItem);
-        },
-      ),
-    );
-  }
-// FeedScreen.dart mai yeh do functions update karo:
-// feed_screen.dart میں یہ دو functions اپڈیٹ کریں:
-
-  void _handleDeviceStorageDownload(String? path, String format, String quality, Map<String, dynamic> item) {
-    if (path != null && path.isNotEmpty) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DownloadProgressScreen(
-            platformName: item['platform'] as String,
-            contentTitle: '${item['title']} ($format - $quality)',
-            storagePath: path,
-            isDeviceStorage: true,
-            fromPlatformScreen: false, //
-            sourcePlatform: 'feed', //
-          ),
-        ),
-      );
-    }
-  }
-
-  void _handleAppStorageDownload(String format, String quality, Map<String, dynamic> item) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DownloadProgressScreen(
-          platformName: item['platform'] as String,
-          contentTitle: '${item['title']} ($format - $quality)',
-          isDeviceStorage: false,
-          fromPlatformScreen: false, // ✅ Feed سے ہو تو FALSE
-          sourcePlatform: 'feed', // ✅ 'feed' set کریں
-        ),
-      ),
-    );
-  }
-
-  void _shareContent(Map<String, dynamic> item) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Share Content',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF3B1C32),
-              ),
-            ),
-            const SizedBox(height: 20),
-            ListTile(
-              leading: const Icon(Icons.share, color: Colors.blue),
-              title: const Text('Share via...'),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.link, color: Colors.green),
-              title: const Text('Copy Link'),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Link copied to clipboard')),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.download, color: primaryColor),
-              title: const Text('Download & Share'),
-              onTap: () {
-                Navigator.pop(context);
-                _showStorageSelectionDialog(item);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showShareOptions() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Share App',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF3B1C32),
-              ),
-            ),
-            const SizedBox(height: 20),
-            ListTile(
-              leading: const Icon(Icons.share, color: Colors.blue),
-              title: const Text('Share TapMate with friends'),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.star, color: Colors.orange),
-              title: const Text('Rate on App Store'),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.feedback, color: Colors.green),
-              title: const Text('Send Feedback'),
-              onTap: () {
-                Navigator.pop(context);
-              },
-            ),
           ],
         ),
       ),

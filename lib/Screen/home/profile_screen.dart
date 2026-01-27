@@ -18,7 +18,7 @@ class ProfileScreen extends StatelessWidget {
     required this.userAvatar,
     this.followers = 0,
     this.following = 0,
-    this.posts = 0,
+    this.posts = 0, required String userId,
   });
 
   @override
@@ -217,6 +217,8 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 }
+
+
 
 
 

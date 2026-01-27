@@ -139,3 +139,5 @@ class AuthProvider extends ChangeNotifier {
     return prefs.getString('user_id')?.isNotEmpty ?? false;
   }
 }
+
+
