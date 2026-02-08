@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 
-// Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
 class FormatSelectionDialog extends StatefulWidget {
   final String contentTitle;
@@ -44,7 +41,7 @@ class _FormatSelectionDialogState extends State<FormatSelectionDialog> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [secondaryColor, primaryColor],
+                      colors: [AppColors.secondary, AppColors.primary],
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -64,7 +61,7 @@ class _FormatSelectionDialogState extends State<FormatSelectionDialog> {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: darkPurple,
+                          color: AppColors.accent,
                         ),
                       ),
                       Text(
@@ -89,7 +86,7 @@ class _FormatSelectionDialogState extends State<FormatSelectionDialog> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: darkPurple,
+                color: AppColors.accent,
               ),
             ),
             const SizedBox(height: 12),
@@ -129,7 +126,7 @@ class _FormatSelectionDialogState extends State<FormatSelectionDialog> {
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: darkPurple,
+                color: AppColors.accent,
               ),
             ),
             const SizedBox(height: 12),
@@ -190,7 +187,7 @@ class _FormatSelectionDialogState extends State<FormatSelectionDialog> {
                       });
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
@@ -227,11 +224,11 @@ class _FormatSelectionDialogState extends State<FormatSelectionDialog> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected
-              ? primaryColor.withOpacity(0.1)
+              ? AppColors.primary.withOpacity(0.1)
               : Colors.grey[50],
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? primaryColor : Colors.grey[300]!,
+            color: isSelected ? AppColors.primary : Colors.grey[300]!,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -239,7 +236,7 @@ class _FormatSelectionDialogState extends State<FormatSelectionDialog> {
           children: [
             Icon(
               icon,
-              color: isSelected ? primaryColor : Colors.grey[600],
+              color: isSelected ? AppColors.primary : Colors.grey[600],
               size: 32,
             ),
             const SizedBox(height: 8),
@@ -248,7 +245,7 @@ class _FormatSelectionDialogState extends State<FormatSelectionDialog> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? primaryColor : Colors.grey[700],
+                color: isSelected ? AppColors.primary : Colors.grey[700],
               ),
             ),
           ],
@@ -266,11 +263,11 @@ class _FormatSelectionDialogState extends State<FormatSelectionDialog> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? primaryColor
+              ? AppColors.primary
               : Colors.grey[50],
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? primaryColor : Colors.grey[300]!,
+            color: isSelected ? AppColors.primary : Colors.grey[300]!,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -297,3 +294,4 @@ class _FormatSelectionDialogState extends State<FormatSelectionDialog> {
     );
   }
 }
+

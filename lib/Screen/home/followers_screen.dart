@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tapmate/Screen/home/other_user_profile_screen.dart';
-
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
 class FollowersScreen extends StatefulWidget {
   final List<Map<String, dynamic>> followers;
@@ -27,7 +24,7 @@ class _FollowersScreenState extends State<FollowersScreen> {
       appBar: AppBar(
         title: const Text('Followers'),
         backgroundColor: Colors.white,
-        foregroundColor: darkPurple,
+        foregroundColor: AppColors.accent,
         elevation: 0,
       ),
       body: widget.followers.isEmpty
@@ -49,7 +46,7 @@ class _FollowersScreenState extends State<FollowersScreen> {
     return ListTile(
       leading: CircleAvatar(
         radius: 24,
-        backgroundColor: primaryColor.withOpacity(0.2),
+        backgroundColor: AppColors.primary.withOpacity(0.2),
         child: Text(
           follower['avatar'] ?? '👤',
           style: const TextStyle(fontSize: 20),
@@ -76,7 +73,7 @@ class _FollowersScreenState extends State<FollowersScreen> {
           });
         },
         style: ElevatedButton.styleFrom(
-          backgroundColor: follower['is_following'] ?? false ? Colors.grey[300] : primaryColor,
+          backgroundColor: follower['is_following'] ?? false ? Colors.grey[300] : AppColors.primary,
           foregroundColor: follower['is_following'] ?? false ? Colors.black : Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           shape: RoundedRectangleBorder(
@@ -92,3 +89,4 @@ class _FollowersScreenState extends State<FollowersScreen> {
     );
   }
 }
+

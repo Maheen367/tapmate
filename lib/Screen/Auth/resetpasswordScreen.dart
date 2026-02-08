@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
@@ -69,8 +70,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   shape: BoxShape.circle,
                   gradient: LinearGradient(
                     colors: [
-                      Color(0xFFA64D79),
-                      Color(0xFF6A1E55),
+                      AppColors.primary,
+                      AppColors.secondary,
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -88,7 +89,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF6A1E55),
+                  color: AppColors.secondary,
                 ),
               ),
 
@@ -162,7 +163,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   child: Ink(
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF6A1E55), Color(0xFFA64D79)],
+                        colors: [AppColors.secondary, AppColors.primary],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -188,3 +189,5 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     );
   }
 }
+
+

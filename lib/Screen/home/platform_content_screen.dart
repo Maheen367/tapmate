@@ -2,11 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'storage_selection_dialog.dart';
 import 'download_progress_screen.dart';
-
-// Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
 class PlatformContentScreen extends StatefulWidget {
   final String platformName;
@@ -162,9 +158,9 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        darkPurple,
-                        secondaryColor,
-                        primaryColor,
+                        AppColors.accent,
+                        AppColors.secondary,
+                        AppColors.primary,
                       ],
                     ),
                     borderRadius: const BorderRadius.only(
@@ -173,7 +169,7 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: darkPurple.withOpacity(0.3),
+                        color: AppColors.accent.withOpacity(0.3),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
@@ -284,7 +280,7 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
-                            color: darkPurple,
+                            color: AppColors.accent,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -314,14 +310,14 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
                                     color: isSelected
-                                        ? primaryColor
-                                        : darkPurple.withOpacity(0.1),
+                                        ? AppColors.primary
+                                        : AppColors.accent.withOpacity(0.1),
                                     width: isSelected ? 2.5 : 1,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
                                       color: isSelected
-                                          ? primaryColor.withOpacity(0.2)
+                                          ? AppColors.primary.withOpacity(0.2)
                                           : Colors.grey.withOpacity(0.1),
                                       blurRadius: isSelected ? 10 : 5,
                                       offset: const Offset(0, 4),
@@ -369,8 +365,8 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold,
                                               color: isSelected
-                                                  ? primaryColor
-                                                  : darkPurple,
+                                                  ? AppColors.primary
+                                                  : AppColors.accent,
                                             ),
                                             maxLines: 2,
                                             overflow: TextOverflow.ellipsis,
@@ -402,14 +398,14 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
                                               padding: const EdgeInsets.symmetric(
                                                   horizontal: 8, vertical: 4),
                                               decoration: BoxDecoration(
-                                                color: primaryColor.withOpacity(0.1),
+                                                color: AppColors.primary.withOpacity(0.1),
                                                 borderRadius: BorderRadius.circular(8),
                                               ),
                                               child: const Text(
                                                 'Selected',
                                                 style: TextStyle(
                                                   fontSize: 10,
-                                                  color: primaryColor,
+                                                  color: AppColors.primary,
                                                   fontWeight: FontWeight.bold,
                                                 ),
                                               ),
@@ -440,7 +436,7 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
               bottom: 20,
               child: FloatingActionButton.extended(
                 onPressed: _showStorageSelectionDialog,
-                backgroundColor: primaryColor,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 elevation: 8,
                 icon: const Icon(Icons.download_rounded, size: 24),
@@ -458,3 +454,4 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
     );
   }
 }
+

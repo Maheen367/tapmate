@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'platform_auth_screen.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
-// Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
 
 class PlatformSelectionScreen extends StatelessWidget {
   const PlatformSelectionScreen({super.key});
@@ -23,7 +20,7 @@ class PlatformSelectionScreen extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [darkPurple, secondaryColor, primaryColor],
+                colors: [AppColors.accent, AppColors.secondary, AppColors.primary],
               ),
               borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(25),
@@ -84,7 +81,7 @@ class PlatformSelectionScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      color: darkPurple,
+                      color: AppColors.accent,
                     ),
                   ),
                   const SizedBox(height: 15),
@@ -200,13 +197,13 @@ class PlatformSelectionScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: darkPurple.withOpacity(0.08),
+              color: AppColors.accent.withOpacity(0.08),
               blurRadius: 8,
               offset: const Offset(0, 3),
             ),
           ],
           border: Border.all(
-            color: darkPurple.withOpacity(0.1),
+            color: AppColors.accent.withOpacity(0.1),
             width: 1,
           ),
         ),
@@ -241,7 +238,7 @@ class PlatformSelectionScreen extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: darkPurple,
+                color: AppColors.accent,
               ),
               textAlign: TextAlign.center,
               maxLines: 1,
@@ -264,3 +261,4 @@ class PlatformSelectionScreen extends StatelessWidget {
     );
   }
 }
+

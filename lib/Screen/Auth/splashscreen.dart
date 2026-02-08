@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 import 'OnboardingScreen.dart';
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -29,9 +30,9 @@ class _SplashScreenState extends State<SplashScreen> {
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Color(0xFF3B1C32), // Dark Maroon
-              Color(0xFF6A1E55), // Deep Purple
-              Color(0xFFA64D79), // Dusty Pink
+              AppColors.accent, // Dark Maroon
+              AppColors.secondary, // Deep Purple
+              AppColors.primary, // Dusty Pink
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -58,7 +59,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 child: const Icon(
                   Icons.download_for_offline_outlined,
                   size: 70,
-                  color: Color(0xFFA64D79),
+                  color: AppColors.primary,
                 ),
               ),
               const SizedBox(height: 40),
@@ -99,3 +100,4 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
+

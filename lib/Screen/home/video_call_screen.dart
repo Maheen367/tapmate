@@ -1,11 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:tapmate/Screen/home/other_user_profile_screen.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
-// Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
 
 class VideoCallScreen extends StatefulWidget {
   final String userName;
@@ -108,7 +105,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
           children: [
             // Remote video (full screen)
             Container(
-              color: darkPurple.withOpacity(0.3),
+              color: AppColors.accent.withOpacity(0.3),
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -166,7 +163,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                   color: Colors.black.withOpacity(0.7),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: primaryColor,
+                    color: AppColors.primary,
                     width: 2,
                   ),
                 ),
@@ -194,7 +191,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
                     : Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [primaryColor.withOpacity(0.7), secondaryColor],
+                      colors: [AppColors.primary.withOpacity(0.7), AppColors.secondary],
                     ),
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -524,7 +521,7 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text(
               'Close',
-              style: TextStyle(color: primaryColor),
+              style: TextStyle(color: AppColors.primary),
             ),
           ),
         ],
@@ -558,3 +555,4 @@ class _VideoCallScreenState extends State<VideoCallScreen> {
     );
   }
 }
+

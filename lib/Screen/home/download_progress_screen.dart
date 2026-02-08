@@ -5,11 +5,8 @@ import 'package:tapmate/auth_provider.dart';
 import 'package:tapmate/utils/guide_manager.dart';
 import 'library_screen.dart';
 import 'platform_content_screen.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
-// Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
 
 enum DownloadStatus {
   downloading,
@@ -264,7 +261,7 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: primaryColor.withOpacity(0.2)),
+        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
       ),
       child: Row(
         children: [
@@ -281,7 +278,7 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
                   valueColor: AlwaysStoppedAnimation<Color>(
                     _status == DownloadStatus.completed
                         ? Colors.green
-                        : primaryColor,
+                        : AppColors.primary,
                   ),
                 ),
               ),
@@ -306,7 +303,7 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: darkPurple,
+                    color: AppColors.accent,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -329,7 +326,7 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
-                color: primaryColor,
+                color: AppColors.primary,
               ),
             ),
         ],
@@ -352,7 +349,7 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [darkPurple, secondaryColor, primaryColor],
+                  colors: [AppColors.accent, AppColors.secondary, AppColors.primary],
                 ),
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(25),
@@ -360,7 +357,7 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: darkPurple.withOpacity(0.3),
+                    color: AppColors.accent.withOpacity(0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -428,7 +425,7 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
                             icon: Icons.video_library_rounded,
                             title: 'Browse More',
                             subtitle: 'Find more videos',
-                            color: primaryColor,
+                            color: AppColors.primary,
                             onTap: () {
                               if (widget.sourcePlatform == 'search') {
                                 // Go back to Search & Discovery screen
@@ -467,7 +464,7 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
                             icon: Icons.home_rounded,
                             title: 'Go Home',
                             subtitle: 'Back to main screen',
-                            color: secondaryColor,
+                            color: AppColors.secondary,
                             onTap: () {
                               Navigator.pushNamedAndRemoveUntil(
                                 context,
@@ -489,7 +486,7 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
                         color: Colors.grey[50],
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: darkPurple.withOpacity(0.1),
+                          color: AppColors.accent.withOpacity(0.1),
                         ),
                       ),
                       child: Column(
@@ -500,7 +497,7 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: darkPurple,
+                              color: AppColors.accent,
                             ),
                           ),
                           const SizedBox(height: 15),
@@ -515,7 +512,7 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
                               valueColor: AlwaysStoppedAnimation<Color>(
                                 _status == DownloadStatus.completed
                                     ? Colors.green
-                                    : primaryColor,
+                                    : AppColors.primary,
                               ),
                             ),
                           ),
@@ -528,7 +525,7 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  color: primaryColor,
+                                  color: AppColors.primary,
                                 ),
                               ),
                               Text(
@@ -568,10 +565,10 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: primaryColor.withOpacity(0.05),
+                              color: AppColors.primary.withOpacity(0.05),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: primaryColor.withOpacity(0.1),
+                                color: AppColors.primary.withOpacity(0.1),
                               ),
                             ),
                             child: Column(
@@ -582,7 +579,7 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: darkPurple,
+                                    color: AppColors.accent,
                                   ),
                                 ),
                                 const SizedBox(height: 8),
@@ -653,7 +650,7 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
                                 icon: const Icon(Icons.play_arrow, size: 18),
                                 label: const Text('Resume'),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: primaryColor,
+                                  backgroundColor: AppColors.primary,
                                 ),
                               ),
                             const SizedBox(width: 15),
@@ -683,12 +680,12 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: const Text('Download running in background'),
-              backgroundColor: primaryColor,
+              backgroundColor: AppColors.primary,
               behavior: SnackBarBehavior.floating,
             ),
           );
         },
-        backgroundColor: primaryColor,
+        backgroundColor: AppColors.primary,
         icon: const Icon(Icons.download_rounded),
         label: Text('${(_progress * 100).toStringAsFixed(0)}%'),
       )
@@ -723,8 +720,8 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
       case 'facebook': return const Color(0xFF1877F2);
       case 'twitter': return const Color(0xFF1DA1F2);
       case 'whatsapp': return const Color(0xFF25D366);
-      case 'feed': return primaryColor;
-      default: return primaryColor;
+      case 'feed': return AppColors.primary;
+      default: return AppColors.primary;
     }
   }
 
@@ -774,7 +771,7 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: darkPurple,
+                color: AppColors.accent,
               ),
             ),
             const SizedBox(height: 4),
@@ -797,7 +794,7 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: primaryColor, size: 18),
+          Icon(icon, color: AppColors.primary, size: 18),
           const SizedBox(height: 6),
           Text(
             title,
@@ -815,7 +812,7 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.bold,
-              color: darkPurple,
+              color: AppColors.accent,
             ),
             textAlign: TextAlign.center,
             maxLines: 2,
@@ -826,4 +823,6 @@ class _DownloadProgressScreenState extends State<DownloadProgressScreen> {
     );
   }
 }
+
+
 

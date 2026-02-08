@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 import 'package:tapmate/Screen/home/home_screen.dart';
 import '../../auth_provider.dart';
 
@@ -69,7 +70,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFF6A1E55), Color(0xFFA64D79)],
+                            colors: [AppColors.secondary, AppColors.primary],
                           ),
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -98,7 +99,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                       icon: Icons.visibility,
                       title: "Overlay Permission",
                       subtitle: overlayPermission ? "Granted" : "Display floating button on other apps",
-                      gradientColors: [Color(0xFFA64D79), Color(0xFF6A1E55)],
+                      gradientColors: [AppColors.primary, AppColors.secondary],
                       granted: overlayPermission,
                       onGrant: () => _grantPermission("Overlay"),
                     ),
@@ -106,7 +107,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                       icon: Icons.check_circle,
                       title: "Accessibility Service",
                       subtitle: accessibilityPermission ? "Granted" : "Detect video links automatically",
-                      gradientColors: [Color(0xFFA64D79), Color(0xFF6A1E55)],
+                      gradientColors: [AppColors.primary, AppColors.secondary],
                       granted: accessibilityPermission,
                       onGrant: () => _grantPermission("Accessibility"),
                     ),
@@ -114,7 +115,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                       icon: Icons.folder,
                       title: "Storage Access",
                       subtitle: storagePermission ? "Granted" : "Save videos to your device",
-                      gradientColors: [Color(0xFFA64D79), Color(0xFF6A1E55)],
+                      gradientColors: [AppColors.primary, AppColors.secondary],
                       granted: storagePermission,
                       onGrant: () => _grantPermission("Storage"),
                     ),
@@ -122,7 +123,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                       icon: Icons.notifications,
                       title: "Notifications",
                       subtitle: notificationsPermission ? "Granted" : "Alert you when downloads complete",
-                      gradientColors: [Color(0xFFA64D79), Color(0xFF6A1E55)],
+                      gradientColors: [AppColors.primary, AppColors.secondary],
                       granted: notificationsPermission,
                       onGrant: () => _grantPermission("Notifications"),
                     ),
@@ -148,7 +149,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                       child: Ink(
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
-                            colors: [Color(0xFFA64D79), Color(0xFF6A1E55)],
+                            colors: [AppColors.primary, AppColors.secondary],
                           ),
                           borderRadius: BorderRadius.circular(14),
                         ),
@@ -210,7 +211,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
             child: Icon(
               icon,
               size: 26,
-              color: granted ? const Color(0xFFA64D79) : Colors.black87, // pink-purple for granted
+              color: granted ?  AppColors.primary : Colors.black87, // pink-purple for granted
             ),
           ),
           const SizedBox(width: 15),
@@ -223,7 +224,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: granted ? const Color(0xFFA64D79) : Colors.black,
+                    color: granted ?  AppColors.primary : Colors.black,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -231,7 +232,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                   subtitle,
                   style: TextStyle(
                     fontSize: 13,
-                    color: granted ? const Color(0xFF6A1E55) : Colors.black54,
+                    color: granted ?  AppColors.secondary : Colors.black54,
                   ),
                 ),
               ],
@@ -253,7 +254,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
               child: Ink(
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFFA64D79), Color(0xFF6A1E55)],
+                    colors: [AppColors.primary, AppColors.secondary],
                   ),
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -270,3 +271,4 @@ class _PermissionScreenState extends State<PermissionScreen> {
       ),
     );}
 }
+

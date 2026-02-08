@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-
+import 'package:tapmate/Screen/constants/app_colors.dart';
 // Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
+
 
 class CommentsScreen extends StatefulWidget {
   final String contentTitle;
@@ -66,7 +64,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [darkPurple, secondaryColor, primaryColor],
+                  colors: [AppColors.accent, AppColors.secondary, AppColors.primary],
                 ),
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(25),
@@ -133,7 +131,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                 children: [
                   CircleAvatar(
                     radius: 18,
-                    backgroundColor: primaryColor.withOpacity(0.2),
+                    backgroundColor: AppColors.primary.withOpacity(0.2),
                     child: const Text('👤', style: TextStyle(fontSize: 18)),
                   ),
                   const SizedBox(width: 10),
@@ -154,7 +152,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                   ),
                   const SizedBox(width: 10),
                   IconButton(
-                    icon: const Icon(Icons.send, color: primaryColor),
+                    icon: const Icon(Icons.send, color: AppColors.primary),
                     onPressed: () {
                       if (_commentController.text.isNotEmpty) {
                         setState(() {
@@ -187,7 +185,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: primaryColor.withOpacity(0.2),
+            backgroundColor: AppColors.primary.withOpacity(0.2),
             child: Text(
               comment['avatar'] as String,
               style: const TextStyle(fontSize: 18),
@@ -205,7 +203,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: darkPurple,
+                        color: AppColors.accent,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -223,7 +221,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                   comment['comment'] as String,
                   style: const TextStyle(
                     fontSize: 14,
-                    color: darkPurple,
+                    color: AppColors.accent,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -267,6 +265,8 @@ class _CommentsScreenState extends State<CommentsScreen> {
     );
   }
 }
+
+
 
 
 

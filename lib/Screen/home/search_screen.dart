@@ -6,11 +6,8 @@ import 'package:tapmate/Screen/home/storage_selection_dialog.dart';
 import 'package:tapmate/Screen/services/dummy_data_service.dart';
 import '../../auth_provider.dart';
 import '../../theme_provider.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
-// Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
 
 class SearchDiscoverScreen extends StatefulWidget {
   const SearchDiscoverScreen({super.key});
@@ -156,7 +153,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
             children: [
               Icon(
                 icon,
-                color: isActive ? primaryColor : (isDarkMode ? Colors.grey[600] : Colors.grey),
+                color: isActive ? AppColors.primary : (isDarkMode ? Colors.grey[600] : Colors.grey),
                 size: 24,
               ),
               if (isLocked)
@@ -183,7 +180,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
             label,
             style: TextStyle(
               fontSize: 12,
-              color: isActive ? primaryColor : (isDarkMode ? Colors.grey[600] : Colors.grey),
+              color: isActive ? AppColors.primary : (isDarkMode ? Colors.grey[600] : Colors.grey),
               fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -212,7 +209,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [darkPurple, secondaryColor, primaryColor],
+                  colors: [AppColors.accent, AppColors.secondary, AppColors.primary],
                 ),
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(30),
@@ -220,7 +217,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: darkPurple.withOpacity(0.3),
+                    color: AppColors.accent.withOpacity(0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -299,9 +296,9 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                             _performSearch(_searchController.text);
                           }
                         },
-                        selectedColor: primaryColor,
+                        selectedColor: AppColors.primary,
                         labelStyle: TextStyle(
-                          color: isSelected ? Colors.white : (isDarkMode ? Colors.white : darkPurple),
+                          color: isSelected ? Colors.white : (isDarkMode ? Colors.white : AppColors.accent),
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
@@ -380,7 +377,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
             ),
             child: Row(
               children: [
-                Icon(Icons.search, color: primaryColor),
+                Icon(Icons.search, color: AppColors.primary),
                 const SizedBox(width: 10),
                 Expanded(
                   child: TextField(
@@ -400,7 +397,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                 ),
                 if (_searchController.text.isNotEmpty)
                   IconButton(
-                    icon: Icon(Icons.clear, size: 20, color: primaryColor),
+                    icon: Icon(Icons.clear, size: 20, color: AppColors.primary),
                     onPressed: _clearSearch,
                   ),
               ],
@@ -422,7 +419,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: isDarkMode ? Colors.white : darkPurple,
+                    color: isDarkMode ? Colors.white : AppColors.accent,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -432,14 +429,14 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: primaryColor.withOpacity(0.1),
+                    color: AppColors.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     _selectedPlatform,
                     style: TextStyle(
                       fontSize: 12,
-                      color: primaryColor,
+                      color: AppColors.primary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -454,7 +451,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
         Expanded(
           child: _isSearching
               ? Center(
-            child: CircularProgressIndicator(color: primaryColor),
+            child: CircularProgressIndicator(color: AppColors.primary),
           )
               : _searchResults.isEmpty
               ? Center(
@@ -472,7 +469,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : darkPurple,
+                    color: isDarkMode ? Colors.white : AppColors.accent,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -524,7 +521,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.search, color: primaryColor),
+                  Icon(Icons.search, color: AppColors.primary),
                   const SizedBox(width: 10),
                   Expanded(
                     child: TextField(
@@ -544,7 +541,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                   ),
                   if (_searchController.text.isNotEmpty)
                     IconButton(
-                      icon: Icon(Icons.clear, size: 20, color: primaryColor),
+                      icon: Icon(Icons.clear, size: 20, color: AppColors.primary),
                       onPressed: _clearSearch,
                     ),
                 ],
@@ -592,14 +589,14 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.trending_up, color: primaryColor, size: 22),
+              Icon(Icons.trending_up, color: AppColors.primary, size: 22),
               const SizedBox(width: 8),
               Text(
                 "Trending Videos",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  color: isDarkMode ? Colors.white : darkPurple,
+                  color: isDarkMode ? Colors.white : AppColors.accent,
                 ),
               ),
             ],
@@ -645,7 +642,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w600,
-                  color: isDarkMode ? Colors.white : darkPurple,
+                  color: isDarkMode ? Colors.white : AppColors.accent,
                 ),
               ),
               GestureDetector(
@@ -665,7 +662,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: primaryColor,
+                    color: AppColors.primary,
                   ),
                 ),
               ),
@@ -712,14 +709,14 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.trending_up, color: primaryColor, size: 22),
+              Icon(Icons.trending_up, color: AppColors.primary, size: 22),
               const SizedBox(width: 8),
               Text(
                 "Trending Searches",
                 style: TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
-                  color: isDarkMode ? Colors.white : darkPurple,
+                  color: isDarkMode ? Colors.white : AppColors.accent,
                 ),
               ),
             ],
@@ -759,7 +756,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
-              color: isDarkMode ? Colors.white : darkPurple,
+              color: isDarkMode ? Colors.white : AppColors.accent,
             ),
           ),
           const SizedBox(height: 16),
@@ -799,7 +796,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
           ),
         ],
         border: Border.all(
-          color: darkPurple.withOpacity(0.1),
+          color: AppColors.accent.withOpacity(0.1),
         ),
       ),
       child: Column(
@@ -814,8 +811,8 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      primaryColor.withOpacity(0.3),
-                      primaryColor.withOpacity(0.1),
+                      AppColors.primary.withOpacity(0.3),
+                      AppColors.primary.withOpacity(0.1),
                     ],
                   ),
                   borderRadius: const BorderRadius.only(
@@ -829,7 +826,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
                     return Center(
-                      child: CircularProgressIndicator(color: primaryColor),
+                      child: CircularProgressIndicator(color: AppColors.primary),
                     );
                   },
                   errorBuilder: (context, error, stackTrace) {
@@ -837,11 +834,11 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.videocam, size: 40, color: primaryColor),
+                          Icon(Icons.videocam, size: 40, color: AppColors.primary),
                           const SizedBox(height: 10),
                           Text(
                             'Video Preview',
-                            style: TextStyle(color: primaryColor),
+                            style: TextStyle(color: AppColors.primary),
                           ),
                         ],
                       ),
@@ -902,7 +899,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : darkPurple,
+                    color: isDarkMode ? Colors.white : AppColors.accent,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -922,7 +919,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                           video['user_name'] ?? 'Unknown',
                           style: TextStyle(
                             fontSize: 14,
-                            color: primaryColor,
+                            color: AppColors.primary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -984,7 +981,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
@@ -1033,7 +1030,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
           ),
         ],
         border: Border.all(
-          color: darkPurple.withOpacity(0.1),
+          color: AppColors.accent.withOpacity(0.1),
         ),
       ),
       child: Column(
@@ -1046,8 +1043,8 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  primaryColor.withOpacity(0.3),
-                  primaryColor.withOpacity(0.1),
+                  AppColors.primary.withOpacity(0.3),
+                  AppColors.primary.withOpacity(0.1),
                 ],
               ),
               borderRadius: const BorderRadius.only(
@@ -1061,12 +1058,12 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
               loadingBuilder: (context, child, loadingProgress) {
                 if (loadingProgress == null) return child;
                 return Center(
-                  child: CircularProgressIndicator(color: primaryColor),
+                  child: CircularProgressIndicator(color: AppColors.primary),
                 );
               },
               errorBuilder: (context, error, stackTrace) {
                 return Center(
-                  child: Icon(Icons.videocam, size: 40, color: primaryColor),
+                  child: Icon(Icons.videocam, size: 40, color: AppColors.primary),
                 );
               },
             ),
@@ -1083,7 +1080,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : darkPurple,
+                    color: isDarkMode ? Colors.white : AppColors.accent,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -1137,7 +1134,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                           ? () => _showGuestDownloadDialog()
                           : () => _downloadContent(video),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
+                        backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 6),
                         shape: RoundedRectangleBorder(
@@ -1185,7 +1182,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
               },
               child: Row(
                 children: [
-                  Icon(Icons.history, size: 18, color: primaryColor),
+                  Icon(Icons.history, size: 18, color: AppColors.primary),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -1193,7 +1190,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: isDarkMode ? Colors.white : darkPurple,
+                        color: isDarkMode ? Colors.white : AppColors.accent,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1229,7 +1226,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
         decoration: BoxDecoration(
           color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: primaryColor, width: 1),
+          border: Border.all(color: AppColors.primary, width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.grey.withOpacity(isDarkMode ? 0.2 : 0.1),
@@ -1240,7 +1237,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
         child: Text(
           trend,
           style: TextStyle(
-            color: primaryColor,
+            color: AppColors.primary,
             fontSize: 13,
           ),
           maxLines: 1,
@@ -1273,7 +1270,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
+              backgroundColor: AppColors.primary,
             ),
             child: const Text(
               'Sign In',
@@ -1308,7 +1305,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
+              backgroundColor: AppColors.primary,
             ),
             child: const Text('Sign Up', style: TextStyle(color: Colors.white)),
           ),
@@ -1330,7 +1327,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> {
       case 'twitter':
         return const Color(0xFF1DA1F2);
       default:
-        return primaryColor;
+        return AppColors.primary;
     }
   }
 }
@@ -1366,14 +1363,14 @@ class _CategoryCard extends StatelessWidget {
           Icon(
             icon,
             size: 28,
-            color: primaryColor,
+            color: AppColors.primary,
           ),
           const SizedBox(height: 10),
           Text(
             title,
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.white : const Color(0xFF3B1C32),
+              color: isDarkMode ? Colors.white : AppColors.accent,
             ),
             textAlign: TextAlign.center,
             maxLines: 1,
@@ -1383,7 +1380,7 @@ class _CategoryCard extends StatelessWidget {
             "$count videos",
             style: TextStyle(
               fontSize: 11,
-              color: primaryColor,
+              color: AppColors.primary,
             ),
             textAlign: TextAlign.center,
             maxLines: 1,
@@ -1394,3 +1391,4 @@ class _CategoryCard extends StatelessWidget {
     );
   }
 }
+

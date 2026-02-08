@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 import 'LoginScreen.dart';
 import '../home/home_screen.dart';
 import '../../auth_provider.dart';
@@ -21,7 +22,7 @@ class OnboardingScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF6A1E55), Color(0xFFA64D79)],
+                    colors: [AppColors.secondary, AppColors.primary],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -39,7 +40,7 @@ class OnboardingScreen extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF6A1E55),
+                  color: AppColors.secondary,
                 ),
               ),
               const SizedBox(height: 10),
@@ -97,7 +98,7 @@ class OnboardingScreen extends StatelessWidget {
                   child: Ink(
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF6A1E55), Color(0xFFA64D79)],
+                        colors: [AppColors.secondary, AppColors.primary],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -157,7 +158,7 @@ class OnboardingScreen extends StatelessWidget {
             color: const Color(0xFFF0E5FF),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: const Color(0xFFA64D79)),
+          child: Icon(icon, color: AppColors.primary),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -186,3 +187,4 @@ class OnboardingScreen extends StatelessWidget {
     );
   }
 }
+

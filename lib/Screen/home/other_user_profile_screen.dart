@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:tapmate/Screen/home/chat_screen.dart';
 import 'package:tapmate/Screen/services/dummy_data_service.dart';
 
-// Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
 class OtherUserProfileScreen extends StatefulWidget {
   final String userId;
@@ -115,7 +112,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [darkPurple, secondaryColor, primaryColor],
+                  colors: [AppColors.accent, AppColors.secondary, AppColors.primary],
                 ),
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(30),
@@ -123,7 +120,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: darkPurple.withOpacity(0.3),
+                    color: AppColors.accent.withOpacity(0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -172,7 +169,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                             children: [
                               CircleAvatar(
                                 radius: 50,
-                                backgroundColor: primaryColor.withOpacity(0.2),
+                                backgroundColor: AppColors.primary.withOpacity(0.2),
                                 child: Text(
                                   widget.userAvatar,
                                   style: const TextStyle(fontSize: 40),
@@ -203,7 +200,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: darkPurple,
+                                    color: AppColors.accent,
                                   ),
                                 ),
                                 const SizedBox(height: 6),
@@ -211,7 +208,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                                   _userData['username'] ?? '@user',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: primaryColor,
+                                    color: AppColors.primary,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -220,7 +217,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                                   _userData['bio'] ?? 'No bio available',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: darkPurple,
+                                    color: AppColors.accent,
                                     height: 1.5,
                                   ),
                                 ),
@@ -258,7 +255,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                                 child: ElevatedButton(
                                   onPressed: _toggleFollow,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: _isFollowing ? Colors.grey[300] : primaryColor,
+                                    backgroundColor: _isFollowing ? Colors.grey[300] : AppColors.primary,
                                     padding: const EdgeInsets.symmetric(vertical: 12),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
@@ -277,13 +274,13 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                               OutlinedButton(
                                 onPressed: _sendMessage,
                                 style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(color: primaryColor, width: 2),
+                                  side: const BorderSide(color: AppColors.primary, width: 2),
                                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                 ),
-                                child: const Icon(Icons.message, color: primaryColor),
+                                child: const Icon(Icons.message, color: AppColors.primary),
                               ),
                             ],
                           ),
@@ -300,9 +297,9 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                       ),
                       child: TabBar(
                         controller: _tabController,
-                        labelColor: primaryColor,
+                        labelColor: AppColors.primary,
                         unselectedLabelColor: Colors.grey,
-                        indicatorColor: primaryColor,
+                        indicatorColor: AppColors.primary,
                         tabs: const [
                           Tab(icon: Icon(Icons.grid_on)),
                           Tab(icon: Icon(Icons.play_circle_outline)),
@@ -398,7 +395,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
           style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: darkPurple,
+            color: AppColors.accent,
           ),
         ),
         const SizedBox(height: 4),
@@ -529,7 +526,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
               },
             ),
             ListTile(
-              leading: const Icon(Icons.share, color: primaryColor),
+              leading: const Icon(Icons.share, color: AppColors.primary),
               title: const Text('Share Profile'),
               onTap: () {
                 Navigator.pop(context);
@@ -591,7 +588,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
+              backgroundColor: AppColors.primary,
             ),
             child: const Text('Submit', style: TextStyle(color: Colors.white)),
           ),
@@ -600,3 +597,4 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
     );
   }
 }
+

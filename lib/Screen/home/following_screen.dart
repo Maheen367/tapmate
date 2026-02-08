@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:tapmate/Screen/home/other_user_profile_screen.dart';
-
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
 class FollowingScreen extends StatefulWidget {
   final List<Map<String, dynamic>> following;
@@ -36,7 +33,7 @@ class _FollowingScreenState extends State<FollowingScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: primaryColor,
+        backgroundColor: AppColors.primary,
         elevation: 0,
       ),
       body: widget.following.isEmpty
@@ -75,7 +72,7 @@ class _FollowingScreenState extends State<FollowingScreen> {
           children: [
             CircleAvatar(
               radius: 30,
-              backgroundColor: primaryColor.withOpacity(0.2),
+              backgroundColor: AppColors.primary.withOpacity(0.2),
               child: Text(
                 user['avatar']?.toString() ?? '👤',
                 style: const TextStyle(fontSize: 24),
@@ -91,7 +88,7 @@ class _FollowingScreenState extends State<FollowingScreen> {
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: darkPurple,
+                      color: AppColors.accent,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -100,14 +97,14 @@ class _FollowingScreenState extends State<FollowingScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: primaryColor.withOpacity(0.1),
+                          color: AppColors.primary.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
                           user['category']?.toString() ?? 'User',
                           style: const TextStyle(
                             fontSize: 12,
-                            color: primaryColor,
+                            color: AppColors.primary,
                           ),
                         ),
                       ),
@@ -177,3 +174,4 @@ class _FollowingScreenState extends State<FollowingScreen> {
     );
   }
 }
+

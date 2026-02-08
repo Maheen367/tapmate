@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'platform_forgot_password_screen.dart';
 import 'platform_content_screen.dart';
-
-// Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
 class PlatformAuthScreen extends StatefulWidget {
   final String platformName;
@@ -57,7 +53,7 @@ class _PlatformAuthScreenState extends State<PlatformAuthScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [darkPurple, secondaryColor, primaryColor],
+                  colors: [AppColors.accent, AppColors.secondary, AppColors.primary],
                 ),
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(30),
@@ -133,7 +129,7 @@ class _PlatformAuthScreenState extends State<PlatformAuthScreen> {
                         TextFormField(
                           controller: _usernameController,
                           decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.person_outline, color: primaryColor),
+                            prefixIcon: Icon(Icons.person_outline, color: AppColors.primary),
                             hintText: 'Username',
                             filled: true,
                             fillColor: Colors.grey[50],
@@ -143,11 +139,11 @@ class _PlatformAuthScreenState extends State<PlatformAuthScreen> {
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide(color: darkPurple.withOpacity(0.1)),
+                              borderSide: BorderSide(color: AppColors.accent.withOpacity(0.1)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide(color: primaryColor, width: 2),
+                              borderSide: BorderSide(color: AppColors.primary, width: 2),
                             ),
                           ),
                           validator: (value) {
@@ -165,7 +161,7 @@ class _PlatformAuthScreenState extends State<PlatformAuthScreen> {
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
-                          prefixIcon: Icon(Icons.email_outlined, color: primaryColor),
+                          prefixIcon: Icon(Icons.email_outlined, color: AppColors.primary),
                           hintText: 'Email Address',
                           filled: true,
                           fillColor: Colors.grey[50],
@@ -175,11 +171,11 @@ class _PlatformAuthScreenState extends State<PlatformAuthScreen> {
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: darkPurple.withOpacity(0.1)),
+                            borderSide: BorderSide(color: AppColors.accent.withOpacity(0.1)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: primaryColor, width: 2),
+                            borderSide: BorderSide(color: AppColors.primary, width: 2),
                           ),
                         ),
                         validator: (value) {
@@ -199,7 +195,7 @@ class _PlatformAuthScreenState extends State<PlatformAuthScreen> {
                         controller: _passwordController,
                         obscureText: _obscurePassword,
                         decoration: InputDecoration(
-                          prefixIcon: Icon(Icons.lock_outline, color: primaryColor),
+                          prefixIcon: Icon(Icons.lock_outline, color: AppColors.primary),
                           hintText: 'Password',
                           filled: true,
                           fillColor: Colors.grey[50],
@@ -209,16 +205,16 @@ class _PlatformAuthScreenState extends State<PlatformAuthScreen> {
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: darkPurple.withOpacity(0.1)),
+                            borderSide: BorderSide(color: AppColors.accent.withOpacity(0.1)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide(color: primaryColor, width: 2),
+                            borderSide: BorderSide(color: AppColors.primary, width: 2),
                           ),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                              color: primaryColor,
+                              color: AppColors.primary,
                             ),
                             onPressed: () {
                               setState(() {
@@ -259,7 +255,7 @@ class _PlatformAuthScreenState extends State<PlatformAuthScreen> {
                             child: Text(
                               'Forgot Password?',
                               style: TextStyle(
-                                color: primaryColor,
+                                color: AppColors.primary,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
                               ),
@@ -284,14 +280,14 @@ class _PlatformAuthScreenState extends State<PlatformAuthScreen> {
                           child: Ink(
                             decoration: BoxDecoration(
                               gradient: const LinearGradient(
-                                colors: [secondaryColor, primaryColor],
+                                colors: [AppColors.secondary, AppColors.primary],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: primaryColor.withOpacity(0.3),
+                                  color: AppColors.primary.withOpacity(0.3),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -328,7 +324,7 @@ class _PlatformAuthScreenState extends State<PlatformAuthScreen> {
                           Text(
                             _isSignIn ? "Don't have an account? " : 'Already have an account? ',
                             style: TextStyle(
-                              color: darkPurple,
+                              color: AppColors.accent,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -344,7 +340,7 @@ class _PlatformAuthScreenState extends State<PlatformAuthScreen> {
                             child: Text(
                               _isSignIn ? 'Create Account' : 'Sign In',
                               style: const TextStyle(
-                                color: primaryColor,
+                                color: AppColors.primary,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -384,7 +380,7 @@ class _PlatformAuthScreenState extends State<PlatformAuthScreen> {
                   ? 'Successfully signed in to ${widget.platformName}!'
                   : 'Account created successfully!',
             ),
-            backgroundColor: primaryColor,
+            backgroundColor: AppColors.primary,
             duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -409,4 +405,6 @@ class _PlatformAuthScreenState extends State<PlatformAuthScreen> {
     }
   }
 }
+
+
 

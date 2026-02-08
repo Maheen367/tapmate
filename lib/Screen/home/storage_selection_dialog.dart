@@ -3,11 +3,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart'; //
 import 'format_selection_dialog.dart';
 import 'dart:io';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
-// Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
 
 class StorageSelectionDialog extends StatefulWidget {
   final String platformName;
@@ -201,7 +198,7 @@ class _StorageSelectionDialogState extends State<StorageSelectionDialog> {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [secondaryColor, primaryColor],
+                        colors: [AppColors.secondary, AppColors.primary],
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -221,7 +218,7 @@ class _StorageSelectionDialogState extends State<StorageSelectionDialog> {
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
-                            color: darkPurple,
+                            color: AppColors.accent,
                           ),
                         ),
                         Text(
@@ -243,7 +240,7 @@ class _StorageSelectionDialogState extends State<StorageSelectionDialog> {
                 icon: Icons.phone_android,
                 title: 'Device Storage',
                 subtitle: 'Save to your device storage',
-                color: primaryColor,
+                color: AppColors.primary,
                 onTap: _isSelectingPath ? null : _selectDevicePath,
                 isLoading: _isSelectingPath,
               ),
@@ -255,7 +252,7 @@ class _StorageSelectionDialogState extends State<StorageSelectionDialog> {
                 icon: Icons.folder,
                 title: 'App Storage',
                 subtitle: 'Save to TapMate downloads folder',
-                color: secondaryColor,
+                color: AppColors.secondary,
                 onTap: _handleAppStorage,
                 isLoading: false,
               ),
@@ -335,7 +332,7 @@ class _StorageSelectionDialogState extends State<StorageSelectionDialog> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: darkPurple,
+                      color: AppColors.accent,
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -355,7 +352,7 @@ class _StorageSelectionDialogState extends State<StorageSelectionDialog> {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                 ),
               )
             else
@@ -370,3 +367,4 @@ class _StorageSelectionDialogState extends State<StorageSelectionDialog> {
     );
   }
 }
+

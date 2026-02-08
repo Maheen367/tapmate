@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
 class CreatePostScreen extends StatefulWidget {
   @override
@@ -28,7 +29,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             child: Text(
               'Share',
               style: TextStyle(
-                color: Color(0xFFA64D79),
+                color: AppColors.primary,
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),
@@ -58,7 +59,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       // Pick video/image
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFFA64D79),
+                      backgroundColor: AppColors.primary,
                     ),
                     child: Text('Select from Library'),
                   ),
@@ -83,3 +84,4 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     );
   }
 }
+

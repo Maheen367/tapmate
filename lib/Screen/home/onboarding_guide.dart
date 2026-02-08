@@ -2,11 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:showcaseview/showcaseview.dart';
 import 'package:tapmate/Screen/Auth/LoginScreen.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
-// Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
 
 /// Keys holder for all showcase elements
 class OnboardingGuideKeys {
@@ -59,7 +56,7 @@ Widget buildShowcase({
     titleTextStyle: TextStyle(
       fontSize: 20,
       fontWeight: FontWeight.bold,
-      color: isDarkMode ? Colors.white : darkPurple,
+      color: isDarkMode ? Colors.white : AppColors.accent,
       fontFamily: 'Roboto',
     ),
     descTextStyle: TextStyle(
@@ -72,7 +69,7 @@ Widget buildShowcase({
     tooltipBackgroundColor: isDarkMode
         ? const Color(0xFF1E1E1E)
         : Colors.white,
-    textColor: isDarkMode ? Colors.white : darkPurple,
+    textColor: isDarkMode ? Colors.white : AppColors.accent,
     overlayColor: Colors.black.withOpacity(0.7),
     targetPadding: const EdgeInsets.all(8),
     tooltipPadding: const EdgeInsets.all(20),
@@ -91,13 +88,13 @@ void showLockedFeatureDialog(BuildContext context, String featureName, bool isDa
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Row(
         children: [
-          Icon(Icons.lock_outline, color: primaryColor, size: 28),
+          Icon(Icons.lock_outline, color: AppColors.primary, size: 28),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               'Feature Locked',
               style: TextStyle(
-                color: isDarkMode ? Colors.white : darkPurple,
+                color: isDarkMode ? Colors.white : AppColors.accent,
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
                 fontFamily: 'Roboto',
@@ -138,7 +135,7 @@ void showLockedFeatureDialog(BuildContext context, String featureName, bool isDa
             });
           },
           style: ElevatedButton.styleFrom(
-            backgroundColor: primaryColor,
+            backgroundColor: AppColors.primary,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -156,3 +153,4 @@ void showLockedFeatureDialog(BuildContext context, String featureName, bool isDa
     ),
   );
 }
+

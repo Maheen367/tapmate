@@ -8,11 +8,8 @@ import 'package:tapmate/Screen/home/storage_selection_dialog.dart';
 import 'package:tapmate/Screen/services/dummy_data_service.dart';
 import '../../auth_provider.dart';
 import '../../theme_provider.dart';
-
+import 'package:tapmate/Screen/constants/app_colors.dart';
 // Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -94,7 +91,7 @@ class _FeedScreenState extends State<FeedScreen> {
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: darkPurple,
+                color: AppColors.accent,
               ),
             ),
             const SizedBox(height: 20),
@@ -119,7 +116,7 @@ class _FeedScreenState extends State<FeedScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.download, color: primaryColor, size: 28),
+              leading: const Icon(Icons.download, color: AppColors.primary, size: 28),
               title: const Text('Download & Share', style: TextStyle(fontSize: 16)),
               onTap: () {
                 Navigator.pop(context);
@@ -179,7 +176,7 @@ class _FeedScreenState extends State<FeedScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(Icons.save_alt, color: primaryColor, size: 28),
+              leading: Icon(Icons.save_alt, color: AppColors.primary, size: 28),
               title: Text('Save Post', style: TextStyle(fontSize: 16)),
               onTap: () {
                 Navigator.pop(context);
@@ -189,7 +186,7 @@ class _FeedScreenState extends State<FeedScreen> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.notifications_off, color: primaryColor, size: 28),
+              leading: Icon(Icons.notifications_off, color: AppColors.primary, size: 28),
               title: Text('Mute Notifications', style: TextStyle(fontSize: 16)),
               onTap: () {
                 Navigator.pop(context);
@@ -267,7 +264,7 @@ class _FeedScreenState extends State<FeedScreen> {
             children: [
               Icon(
                 icon,
-                color: isActive ? primaryColor : (isDarkMode ? Colors.grey[600] : Colors.grey),
+                color: isActive ? AppColors.primary : (isDarkMode ? Colors.grey[600] : Colors.grey),
                 size: 24,
               ),
               if (isLocked)
@@ -294,7 +291,7 @@ class _FeedScreenState extends State<FeedScreen> {
             label,
             style: TextStyle(
               fontSize: 12,
-              color: isActive ? primaryColor : (isDarkMode ? Colors.grey[600] : Colors.grey),
+              color: isActive ? AppColors.primary : (isDarkMode ? Colors.grey[600] : Colors.grey),
               fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -322,7 +319,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 MaterialPageRoute(builder: (context) => const LoginScreen()),
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Sign Up', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -354,7 +351,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 gradient: const LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [darkPurple, secondaryColor, primaryColor],
+                  colors: [AppColors.accent, AppColors.secondary, AppColors.primary],
                 ),
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(30),
@@ -362,7 +359,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: darkPurple.withOpacity(0.3),
+                    color: AppColors.accent.withOpacity(0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -472,7 +469,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                 'Upgrade',
                                 style: TextStyle(
                                   fontSize: 10,
-                                  color: primaryColor,
+                                  color: AppColors.primary,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -490,10 +487,10 @@ class _FeedScreenState extends State<FeedScreen> {
             Expanded(
               child: RefreshIndicator(
                 onRefresh: _loadFeedItems,
-                color: primaryColor,
+                color: AppColors.primary,
                 child: _isLoading
                     ? Center(
-                  child: CircularProgressIndicator(color: primaryColor),
+                  child: CircularProgressIndicator(color: AppColors.primary),
                 )
                     : _feedItems.isEmpty
                     ? Center(
@@ -511,7 +508,7 @@ class _FeedScreenState extends State<FeedScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : darkPurple,
+                          color: isDarkMode ? Colors.white : AppColors.accent,
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -581,7 +578,7 @@ class _FeedScreenState extends State<FeedScreen> {
         color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: darkPurple.withOpacity(0.1),
+          color: AppColors.accent.withOpacity(0.1),
         ),
         boxShadow: [
           BoxShadow(
@@ -618,7 +615,7 @@ class _FeedScreenState extends State<FeedScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: isDarkMode ? Colors.white : darkPurple,
+                            color: isDarkMode ? Colors.white : AppColors.accent,
                           ),
                         ),
                       ),
@@ -653,7 +650,7 @@ class _FeedScreenState extends State<FeedScreen> {
                   ),
                 ),
                 IconButton(
-                  icon: Icon(Icons.more_vert, color: isDarkMode ? Colors.grey[400] : darkPurple),
+                  icon: Icon(Icons.more_vert, color: isDarkMode ? Colors.grey[400] : AppColors.accent),
                   onPressed: () => _showPostOptions(item),
                 ),
               ],
@@ -667,7 +664,7 @@ class _FeedScreenState extends State<FeedScreen> {
               item['caption'],
               style: TextStyle(
                 fontSize: 14,
-                color: isDarkMode ? Colors.grey[300] : darkPurple,
+                color: isDarkMode ? Colors.grey[300] : AppColors.accent,
                 height: 1.5,
               ),
               maxLines: 3,
@@ -704,26 +701,26 @@ class _FeedScreenState extends State<FeedScreen> {
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
                       return Container(
-                        color: primaryColor.withOpacity(0.1),
+                        color: AppColors.primary.withOpacity(0.1),
                         child: Center(
                           child: CircularProgressIndicator(
-                            color: primaryColor,
+                            color: AppColors.primary,
                           ),
                         ),
                       );
                     },
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
-                        color: primaryColor.withOpacity(0.2),
+                        color: AppColors.primary.withOpacity(0.2),
                         child: Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.videocam, size: 40, color: primaryColor),
+                              Icon(Icons.videocam, size: 40, color: AppColors.primary),
                               const SizedBox(height: 10),
                               Text(
                                 'Video Preview',
-                                style: TextStyle(color: primaryColor),
+                                style: TextStyle(color: AppColors.primary),
                               ),
                             ],
                           ),
@@ -842,14 +839,14 @@ class _FeedScreenState extends State<FeedScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: primaryColor.withOpacity(0.1),
+                          color: AppColors.primary.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           'Downloadable',
                           style: TextStyle(
                             fontSize: 10,
-                            color: primaryColor,
+                            color: AppColors.primary,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -871,13 +868,13 @@ class _FeedScreenState extends State<FeedScreen> {
                             : () => _toggleLike(index),
                         icon: Icon(
                           isLiked ? Icons.favorite : Icons.favorite_border,
-                          color: isLiked ? Colors.red : primaryColor,
+                          color: isLiked ? Colors.red : AppColors.primary,
                           size: 20,
                         ),
                         label: Text(
                           isLiked ? 'Liked' : 'Like',
                           style: TextStyle(
-                            color: isLiked ? Colors.red : primaryColor,
+                            color: isLiked ? Colors.red : AppColors.primary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -901,11 +898,11 @@ class _FeedScreenState extends State<FeedScreen> {
                             ),
                           );
                         },
-                        icon: Icon(Icons.comment_outlined, color: primaryColor, size: 20),
+                        icon: Icon(Icons.comment_outlined, color: AppColors.primary, size: 20),
                         label: Text(
                           'Comment',
                           style: TextStyle(
-                            color: primaryColor,
+                            color: AppColors.primary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -919,11 +916,11 @@ class _FeedScreenState extends State<FeedScreen> {
                     Expanded(
                       child: TextButton.icon(
                         onPressed: () => _sharePost(item),
-                        icon: Icon(Icons.share_outlined, color: primaryColor, size: 20),
+                        icon: Icon(Icons.share_outlined, color: AppColors.primary, size: 20),
                         label: Text(
                           'Share',
                           style: TextStyle(
-                            color: primaryColor,
+                            color: AppColors.primary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -940,11 +937,11 @@ class _FeedScreenState extends State<FeedScreen> {
                           onPressed: isGuest
                               ? () => _showGuestFeatureDialog('Download')
                               : () => _downloadContent(item),
-                          icon: Icon(Icons.download_outlined, color: primaryColor, size: 20),
+                          icon: Icon(Icons.download_outlined, color: AppColors.primary, size: 20),
                           label: Text(
                             'Download',
                             style: TextStyle(
-                              color: primaryColor,
+                              color: AppColors.primary,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -979,7 +976,7 @@ class _FeedScreenState extends State<FeedScreen> {
       case 'instagram':
         return const Color(0xFFE4405F);
       default:
-        return primaryColor;
+        return AppColors.primary;
     }
   }
 
@@ -1009,7 +1006,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 MaterialPageRoute(builder: (context) => const LoginScreen()),
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Sign Up', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -1029,14 +1026,14 @@ class _FeedScreenState extends State<FeedScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.person_add, size: 60, color: primaryColor),
+            Icon(Icons.person_add, size: 60, color: AppColors.primary),
             const SizedBox(height: 20),
             const Text(
               'Join TapMate Community',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
-                color: darkPurple,
+                color: AppColors.accent,
               ),
             ),
             const SizedBox(height: 10),
@@ -1057,7 +1054,7 @@ class _FeedScreenState extends State<FeedScreen> {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
+                  backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: const Text(
@@ -1072,12 +1069,12 @@ class _FeedScreenState extends State<FeedScreen> {
               child: OutlinedButton(
                 onPressed: () => Navigator.pop(context),
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: primaryColor),
+                  side: const BorderSide(color: AppColors.primary),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
                 child: Text(
                   'Continue as Guest',
-                  style: TextStyle(color: primaryColor),
+                  style: TextStyle(color: AppColors.primary),
                 ),
               ),
             ),
@@ -1088,3 +1085,4 @@ class _FeedScreenState extends State<FeedScreen> {
     );
   }
 }
+

@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tapmate/Screen/services/dummy_data_service.dart';
 import 'package:tapmate/auth_provider.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
-// Local Theme Colors - Avoid conflicts
-const Color _primaryColor = Color(0xFFA64D79);
-const Color _secondaryColor = Color(0xFF6A1E55);
-const Color _darkPurple = Color(0xFF3B1C32);
+// Local Theme Colors - Avoid confl32);
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -152,7 +150,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 children: [
                   CircleAvatar(
                     radius: 60,
-                    backgroundColor: _primaryColor.withOpacity(0.1),
+                    backgroundColor: AppColors.primary.withOpacity(0.1),
                     backgroundImage: NetworkImage(DummyDataService.currentUser['profile_pic_url']),
                   ),
                   Positioned(
@@ -161,7 +159,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: const BoxDecoration(
-                        color: _primaryColor,
+                        color: AppColors.primary,
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.edit, color: Colors.white, size: 20),
@@ -174,7 +172,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             Center(
               child: const Text(
                 'Change Photo',
-                style: TextStyle(color: _primaryColor, fontWeight: FontWeight.w500),
+                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500),
               ),
             ),
             const SizedBox(height: 30),
@@ -248,7 +246,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: _darkPurple,
+                      color: AppColors.accent,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -285,7 +283,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             _isPrivate = value;
                           });
                         },
-                        activeColor: _primaryColor,
+                        activeColor: AppColors.primary,
                       ),
                     ],
                   ),
@@ -296,14 +294,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: _isPrivate ? _primaryColor.withOpacity(0.1) : Colors.grey[100],
+                      color: _isPrivate ? AppColors.primary.withOpacity(0.1) : Colors.grey[100],
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       children: [
                         Icon(
                           _isPrivate ? Icons.lock : Icons.lock_open,
-                          color: _isPrivate ? _primaryColor : Colors.grey,
+                          color: _isPrivate ? AppColors.primary : Colors.grey,
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -313,7 +311,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 : 'Your account is public. Anyone can see your posts.',
                             style: TextStyle(
                               fontSize: 14,
-                              color: _isPrivate ? _primaryColor : Colors.grey[600],
+                              color: _isPrivate ? AppColors.primary : Colors.grey[600],
                             ),
                           ),
                         ),
@@ -332,7 +330,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           'View ${DummyDataService.getPendingFollowRequests().length} Pending Requests',
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _secondaryColor,
+                          backgroundColor: AppColors.secondary,
                           foregroundColor: Colors.white,
                           minimumSize: const Size(double.infinity, 50),
                         ),
@@ -347,3 +345,4 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 }
+

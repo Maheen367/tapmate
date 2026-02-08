@@ -6,11 +6,9 @@ import 'package:tapmate/Screen/home/video_call_screen.dart';
 import 'package:tapmate/Screen/services/dummy_data_service.dart';
 import '../../auth_provider.dart';
 import '../../theme_provider.dart';
-
+import 'package:tapmate/Screen/constants/app_colors.dart';
 // Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
+
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -200,7 +198,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   final user = _chatUsers[index];
                   return ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: primaryColor.withOpacity(0.2),
+                      backgroundColor: AppColors.primary.withOpacity(0.2),
                       child: Text(
                         user['avatar'] ?? '👤',
                         style: const TextStyle(fontSize: 20),
@@ -296,7 +294,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(Icons.videocam, color: primaryColor, size: 28),
+              leading: Icon(Icons.videocam, color: AppColors.primary, size: 28),
               title: const Text('Video Call', style: TextStyle(fontSize: 16)),
               onTap: () {
                 Navigator.pop(context);
@@ -329,7 +327,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
               },
             ),
             ListTile(
-              leading: Icon(Icons.notifications_off, color: primaryColor, size: 28),
+              leading: Icon(Icons.notifications_off, color: AppColors.primary, size: 28),
               title: const Text('Mute Notifications', style: TextStyle(fontSize: 16)),
               onTap: () {
                 Navigator.pop(context);
@@ -505,7 +503,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         children: [
           Icon(
             icon,
-            color: isActive ? primaryColor : (isDarkMode ? Colors.grey[600]! : Colors.grey),
+            color: isActive ? AppColors.primary : (isDarkMode ? Colors.grey[600]! : Colors.grey),
             size: 24,
           ),
           const SizedBox(height: 4),
@@ -513,7 +511,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             label,
             style: TextStyle(
               fontSize: 12,
-              color: isActive ? primaryColor : (isDarkMode ? Colors.grey[600]! : Colors.grey),
+              color: isActive ? AppColors.primary : (isDarkMode ? Colors.grey[600]! : Colors.grey),
               fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -552,9 +550,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                 ),
                 child: TabBar(
                   controller: _tabController,
-                  labelColor: primaryColor,
+                  labelColor: AppColors.primary,
                   unselectedLabelColor: isDarkMode ? Colors.grey[400]! : Colors.grey,
-                  indicatorColor: primaryColor,
+                  indicatorColor: AppColors.primary,
                   tabs: const [
                     Tab(text: 'Chats'),
                     Tab(text: 'Requests'),
@@ -619,7 +617,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                 Icon(
                   Icons.lock_outline,
                   size: 80,
-                  color: primaryColor,
+                  color: AppColors.primary,
                 ),
                 const SizedBox(height: 20),
                 Text(
@@ -627,7 +625,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : darkPurple,
+                    color: isDarkMode ? Colors.white : AppColors.accent,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -645,7 +643,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                     Navigator.pushReplacementNamed(context, '/home');
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
+                    backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
                   ),
                   child: const Text(
@@ -673,7 +671,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [darkPurple, secondaryColor, primaryColor],
+          colors: [AppColors.accent, AppColors.secondary, AppColors.primary],
         ),
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(30),
@@ -681,7 +679,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         ),
         boxShadow: [
           BoxShadow(
-            color: darkPurple.withOpacity(0.3),
+            color: AppColors.accent.withOpacity(0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -769,7 +767,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   value: 'video_call',
                   child: Row(
                     children: [
-                      Icon(Icons.videocam, color: primaryColor),
+                      Icon(Icons.videocam, color: AppColors.primary),
                       SizedBox(width: 10),
                       Text('Video Call'),
                     ],
@@ -854,7 +852,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             ),
             child: Row(
               children: [
-                Icon(Icons.search, color: primaryColor),
+                Icon(Icons.search, color: AppColors.primary),
                 const SizedBox(width: 10),
                 Expanded(
                   child: TextField(
@@ -895,7 +893,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : darkPurple,
+                    color: isDarkMode ? Colors.white : AppColors.accent,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -947,7 +945,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
               children: [
                 CircleAvatar(
                   radius: 28,
-                  backgroundColor: primaryColor.withOpacity(0.2),
+                  backgroundColor: AppColors.primary.withOpacity(0.2),
                   child: Text(
                     user['avatar']?.toString() ?? '👤',
                     style: const TextStyle(fontSize: 24),
@@ -985,7 +983,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : darkPurple,
+                          color: isDarkMode ? Colors.white : AppColors.accent,
                         ),
                       ),
                       Text(
@@ -1015,7 +1013,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: primaryColor,
+                  color: AppColors.primary,
                   shape: BoxShape.circle,
                 ),
                 child: Text(
@@ -1050,7 +1048,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.white : darkPurple,
+              color: isDarkMode ? Colors.white : AppColors.accent,
             ),
           ),
           const SizedBox(height: 10),
@@ -1086,11 +1084,11 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             children: [
               CircleAvatar(
                 radius: 28,
-                backgroundColor: primaryColor.withOpacity(0.2),
+                backgroundColor: AppColors.primary.withOpacity(0.2),
                 child: Icon(
                   request['icon'] as IconData? ?? Icons.person,
                   size: 24,
-                  color: primaryColor,
+                  color: AppColors.primary,
                 ),
               ),
               const SizedBox(width: 15),
@@ -1103,7 +1101,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isDarkMode ? Colors.white : darkPurple,
+                        color: isDarkMode ? Colors.white : AppColors.accent,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -1121,7 +1119,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                           child: ElevatedButton(
                             onPressed: () => _acceptRequest(index),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryColor,
+                              backgroundColor: AppColors.primary,
                               padding: const EdgeInsets.symmetric(vertical: 8),
                             ),
                             child: const Text('Accept'),
@@ -1233,7 +1231,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: isDarkMode ? Colors.white : darkPurple,
+                        color: isDarkMode ? Colors.white : AppColors.accent,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -1302,7 +1300,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: primaryColor,
+                    color: AppColors.primary,
                   ),
                 ),
               ],
@@ -1327,7 +1325,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : darkPurple,
+                    color: isDarkMode ? Colors.white : AppColors.accent,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -1382,7 +1380,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                 margin: const EdgeInsets.only(right: 8),
                 child: CircleAvatar(
                   radius: 16,
-                  backgroundColor: primaryColor.withOpacity(0.2),
+                  backgroundColor: AppColors.primary.withOpacity(0.2),
                   child: Text(
                     _currentChatUser['avatar']?.toString() ?? '👤',
                     style: const TextStyle(fontSize: 14),
@@ -1401,7 +1399,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         ListTile(
-                          leading: Icon(Icons.content_copy, color: primaryColor),
+                          leading: Icon(Icons.content_copy, color: AppColors.primary),
                           title: const Text('Copy'),
                           onTap: () {
                             _copyMessage(message['message'].toString());
@@ -1409,7 +1407,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                           },
                         ),
                         ListTile(
-                          leading: Icon(Icons.share, color: primaryColor),
+                          leading: Icon(Icons.share, color: AppColors.primary),
                           title: const Text('Forward'),
                           onTap: () {
                             _forwardMessage(message);
@@ -1436,7 +1434,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: isSent
-                      ? primaryColor
+                      ? AppColors.primary
                       : (isDarkMode ? const Color(0xFF2C2C2C) : Colors.grey[100]!),
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
@@ -1504,7 +1502,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         children: [
           // Emoji button
           IconButton(
-            icon: Icon(Icons.emoji_emotions_outlined, color: primaryColor),
+            icon: Icon(Icons.emoji_emotions_outlined, color: AppColors.primary),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -1517,13 +1515,13 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
           // Attach button
           PopupMenuButton<String>(
-            icon: Icon(Icons.attach_file, color: primaryColor),
+            icon: Icon(Icons.attach_file, color: AppColors.primary),
             itemBuilder: (context) => [
               const PopupMenuItem(
                 value: 'photo',
                 child: Row(
                   children: [
-                    Icon(Icons.photo, color: primaryColor),
+                    Icon(Icons.photo, color: AppColors.primary),
                     SizedBox(width: 10),
                     Text('Photo & Video'),
                   ],
@@ -1533,7 +1531,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                 value: 'camera',
                 child: Row(
                   children: [
-                    Icon(Icons.camera_alt, color: primaryColor),
+                    Icon(Icons.camera_alt, color: AppColors.primary),
                     SizedBox(width: 10),
                     Text('Camera'),
                   ],
@@ -1543,7 +1541,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                 value: 'document',
                 child: Row(
                   children: [
-                    Icon(Icons.insert_drive_file, color: primaryColor),
+                    Icon(Icons.insert_drive_file, color: AppColors.primary),
                     SizedBox(width: 10),
                     Text('Document'),
                   ],
@@ -1590,7 +1588,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
                   // Voice message button
                   IconButton(
-                    icon: Icon(Icons.mic_none, color: primaryColor),
+                    icon: Icon(Icons.mic_none, color: AppColors.primary),
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -1609,7 +1607,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           const SizedBox(width: 12),
           Container(
             decoration: BoxDecoration(
-              color: primaryColor,
+              color: AppColors.primary,
               shape: BoxShape.circle,
             ),
             child: IconButton(
@@ -1622,3 +1620,4 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     );
   }
 }
+

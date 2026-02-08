@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/dummy_data_service.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
+
 
 class SavedPostsScreen extends StatelessWidget {
   @override
@@ -51,3 +53,4 @@ class SavedPostsScreen extends StatelessWidget {
     );
   }
 }
+

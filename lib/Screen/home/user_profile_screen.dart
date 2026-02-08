@@ -11,11 +11,8 @@ import 'package:tapmate/Screen/home/other_user_profile_screen.dart';
 import 'package:tapmate/Screen/services/dummy_data_service.dart';
 import '../../auth_provider.dart';
 import '../../theme_provider.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
-// Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
@@ -80,7 +77,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                   Icon(
                     Icons.person_off_outlined,
                     size: 80,
-                    color: primaryColor,
+                    color: AppColors.primary,
                   ),
                   const SizedBox(height: 20),
                   Text(
@@ -88,7 +85,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.white : darkPurple,
+                      color: isDarkMode ? Colors.white : AppColors.accent,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -106,7 +103,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                       Navigator.pushReplacementNamed(context, '/home');
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
+                      backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
                     ),
                     child: const Text(
@@ -139,7 +136,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [darkPurple, secondaryColor, primaryColor],
+                  colors: [AppColors.accent, AppColors.secondary, AppColors.primary],
                 ),
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(30),
@@ -147,7 +144,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: darkPurple.withOpacity(0.3),
+                    color: AppColors.accent.withOpacity(0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -294,7 +291,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: isDarkMode ? Colors.white : darkPurple,
+                                  color: isDarkMode ? Colors.white : AppColors.accent,
                                 ),
                               ),
                               const SizedBox(height: 6),
@@ -302,7 +299,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                                 '@${_currentUser['username'] ?? 'yourusername'}',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: primaryColor,
+                                  color: AppColors.primary,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -311,7 +308,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                                 _currentUser['bio'] ?? 'No bio added yet',
                                 style: TextStyle(
                                   fontSize: 14,
-                                  color: isDarkMode ? Colors.grey[300] : darkPurple,
+                                  color: isDarkMode ? Colors.grey[300] : AppColors.accent,
                                   height: 1.5,
                                 ),
                               ),
@@ -356,7 +353,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                                   );
                                 },
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: primaryColor,
+                                  backgroundColor: AppColors.primary,
                                   padding: const EdgeInsets.symmetric(vertical: 12),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(10),
@@ -377,13 +374,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                                 _showShareProfile();
                               },
                               style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: primaryColor, width: 2),
+                                side: const BorderSide(color: AppColors.primary, width: 2),
                                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
-                              child: const Icon(Icons.share, color: primaryColor),
+                              child: const Icon(Icons.share, color: AppColors.primary),
                             ),
                           ],
                         ),
@@ -400,9 +397,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                     ),
                     child: TabBar(
                       controller: _tabController,
-                      labelColor: primaryColor,
+                      labelColor: AppColors.primary,
                       unselectedLabelColor: isDarkMode ? Colors.grey[400] : Colors.grey,
-                      indicatorColor: primaryColor,
+                      indicatorColor: AppColors.primary,
                       tabs: const [
                         Tab(icon: Icon(Icons.grid_on)),
                         Tab(icon: Icon(Icons.play_circle_outline)),
@@ -428,7 +425,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                                 'No posts yet',
                                 style: TextStyle(
                                   fontSize: 18,
-                                  color: isDarkMode ? Colors.white : darkPurple,
+                                  color: isDarkMode ? Colors.white : AppColors.accent,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -449,7 +446,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                                   );
                                 },
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: primaryColor,
+                                  backgroundColor: AppColors.primary,
                                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                                 ),
                                 child: const Text(
@@ -484,7 +481,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                                 'No videos yet',
                                 style: TextStyle(
                                   fontSize: 18,
-                                  color: isDarkMode ? Colors.white : darkPurple,
+                                  color: isDarkMode ? Colors.white : AppColors.accent,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -515,7 +512,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                                 'No saved posts',
                                 style: TextStyle(
                                   fontSize: 18,
-                                  color: isDarkMode ? Colors.white : darkPurple,
+                                  color: isDarkMode ? Colors.white : AppColors.accent,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -574,7 +571,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -639,7 +636,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
         children: [
           Icon(
             icon,
-            color: isActive ? primaryColor : (isDarkMode ? Colors.grey[600]! : Colors.grey),
+            color: isActive ? AppColors.primary : (isDarkMode ? Colors.grey[600]! : Colors.grey),
             size: 24,
           ),
           const SizedBox(height: 4),
@@ -647,7 +644,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
             label,
             style: TextStyle(
               fontSize: 12,
-              color: isActive ? primaryColor : (isDarkMode ? Colors.grey[600]! : Colors.grey),
+              color: isActive ? AppColors.primary : (isDarkMode ? Colors.grey[600]! : Colors.grey),
               fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -664,7 +661,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: isDarkMode ? Colors.white : darkPurple,
+            color: isDarkMode ? Colors.white : AppColors.accent,
           ),
         ),
         const SizedBox(height: 4),
@@ -817,7 +814,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.edit, color: primaryColor),
+              leading: const Icon(Icons.edit, color: AppColors.primary),
               title: const Text('Edit Profile'),
               onTap: () {
                 Navigator.pop(context);
@@ -828,7 +825,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
               },
             ),
             ListTile(
-              leading: const Icon(Icons.bookmark, color: primaryColor),
+              leading: const Icon(Icons.bookmark, color: AppColors.primary),
               title: const Text('Saved Posts'),
               onTap: () {
                 Navigator.pop(context);
@@ -839,7 +836,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
               },
             ),
             ListTile(
-              leading: const Icon(Icons.settings, color: primaryColor),
+              leading: const Icon(Icons.settings, color: AppColors.primary),
               title: const Text('Settings'),
               onTap: () {
                 Navigator.pop(context);
@@ -847,7 +844,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
               },
             ),
             ListTile(
-              leading: const Icon(Icons.archive, color: primaryColor),
+              leading: const Icon(Icons.archive, color: AppColors.primary),
               title: const Text('Archive'),
               onTap: () {
                 Navigator.pop(context);
@@ -884,7 +881,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: darkPurple,
+                color: AppColors.accent,
               ),
             ),
             const SizedBox(height: 20),
@@ -919,17 +916,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: primaryColor.withOpacity(0.1),
+              color: AppColors.primary.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: primaryColor, size: 28),
+            child: Icon(icon, color: AppColors.primary, size: 28),
           ),
           const SizedBox(height: 8),
           Text(
             label,
             style: const TextStyle(
               fontSize: 12,
-              color: darkPurple,
+              color: AppColors.accent,
             ),
           ),
         ],
@@ -975,3 +972,4 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
     );
   }
 }
+

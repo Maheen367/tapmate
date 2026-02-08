@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 import 'package:tapmate/Screen/utils/guide_manager.dart';
 import 'platform_selection_screen.dart';
 import '../../auth_provider.dart';
 import '../../theme_provider.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
-// Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -254,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ElevatedButton(
                       onPressed: _nextTutorialStep,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
+                        backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -359,7 +357,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: Text(
           '$feature Locked 🔒',
           style: TextStyle(
-            color: isDarkMode ? Colors.white : darkPurple,
+            color: isDarkMode ? Colors.white : AppColors.accent,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -370,7 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               'Sign up to unlock:',
               style: TextStyle(
-                color: isDarkMode ? Colors.grey[300] : darkPurple,
+                color: isDarkMode ? Colors.grey[300] : AppColors.accent,
               ),
             ),
             const SizedBox(height: 10),
@@ -407,7 +405,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Navigator.pushNamed(context, '/login');
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
+                    backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                   child: const Text(
@@ -469,9 +467,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [
-                                Color(0xFF3B1C32),
-                                Color(0xFF6A1E55),
-                                Color(0xFFA64D79),
+                                AppColors.accent,
+                                AppColors.secondary,
+                                AppColors.primary,
                               ],
                             ),
                             borderRadius: const BorderRadius.only(
@@ -480,7 +478,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF3B1C32).withOpacity(0.3),
+                                color:  AppColors.accent.withOpacity(0.3),
                                 blurRadius: 20,
                                 offset: const Offset(0, 10),
                               ),
@@ -602,7 +600,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                       child: const Icon(
                                         Icons.download_rounded,
-                                        color: Color(0xFFA64D79),
+                                        color: AppColors.primary,
                                         size: 28,
                                       ),
                                     ),
@@ -650,7 +648,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 icon: Icons.download_done_rounded,
                                 title: 'Total Downloads',
                                 value: isGuest ? '0' : '247',
-                                color: const Color(0xFFA64D79),
+                                color: AppColors.primary,
                                 isGuest: isGuest,
                               ),
                               const SizedBox(width: 12),
@@ -658,7 +656,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 icon: Icons.storage_rounded,
                                 title: 'Storage Used',
                                 value: isGuest ? '0 GB' : '2.4 GB',
-                                color: const Color(0xFF6A1E55),
+                                color:  AppColors.secondary,
                                 isGuest: isGuest,
                               ),
                               const SizedBox(width: 12),
@@ -666,7 +664,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 icon: Icons.cloud_upload_rounded,
                                 title: 'Cloud Uploads',
                                 value: isGuest ? '0' : '89',
-                                color: const Color(0xFF3B1C32),
+                                color:  AppColors.accent,
                                 isGuest: isGuest,
                                 isLocked: isGuest,
                               ),
@@ -685,7 +683,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 style: TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
-                                  color: Color(0xFF6A1E55),
+                                  color: AppColors.secondary,
                                   fontFamily: 'Roboto',
                                 ),
                               ),
@@ -697,7 +695,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       icon: Icons.video_library_rounded,
                                       label: 'Library',
                                       subtitle: 'Manage your downloads',
-                                      color: const Color(0xFFA64D79),
+                                      color:  AppColors.primary,
                                       isLocked: isGuest,
                                       onTap: () {
                                         if (isGuest) {
@@ -714,7 +712,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       icon: Icons.settings_rounded,
                                       label: 'Settings',
                                       subtitle: 'App preferences',
-                                      color: const Color(0xFF6A1E55),
+                                      color:  AppColors.secondary,
                                       isLocked: false,
                                       onTap: () {
                                         Navigator.pushNamed(context, '/settings');
@@ -744,7 +742,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ],
                             border: Border.all(
-                              color: const Color(0xFF3B1C32).withOpacity(0.1),
+                              color:  AppColors.accent.withOpacity(0.1),
                             ),
                           ),
                           child: Column(
@@ -754,7 +752,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 children: [
                                   const Icon(
                                     Icons.history_rounded,
-                                    color: Color(0xFFA64D79),
+                                    color: AppColors.primary,
                                     size: 24,
                                   ),
                                   const SizedBox(width: 10),
@@ -763,7 +761,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
-                                      color: isDarkMode ? Colors.white : const Color(0xFF6A1E55),
+                                      color: isDarkMode ? Colors.white : AppColors.secondary,
                                       fontFamily: 'Roboto',
                                     ),
                                   ),
@@ -844,7 +842,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 }
               },
-              backgroundColor: isGuest ? Colors.grey : const Color(0xFFA64D79),
+              backgroundColor: isGuest ? Colors.grey :  AppColors.primary,
               foregroundColor: Colors.white,
               elevation: 8,
               shape: RoundedRectangleBorder(
@@ -906,7 +904,7 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.white : darkPurple,
+              color: isDarkMode ? Colors.white : AppColors.accent,
               fontFamily: 'Roboto',
             ),
           ),
@@ -949,7 +947,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
             border: Border.all(
-              color: const Color(0xFF3B1C32).withOpacity(0.1),
+              color:  AppColors.accent.withOpacity(0.1),
             ),
           ),
           child: Stack(
@@ -1068,7 +1066,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
-                          color: isLocked ? Colors.grey : const Color(0xFF6A1E55),
+                          color: isLocked ? Colors.grey : AppColors.secondary,
                           fontFamily: 'Roboto',
                         ),
                       ),
@@ -1116,12 +1114,12 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFA64D79).withOpacity(0.1),
+              color:  AppColors.primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
               icon,
-              color: const Color(0xFFA64D79),
+              color:  AppColors.primary,
               size: 20,
             ),
           ),
@@ -1153,14 +1151,14 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFA64D79).withOpacity(0.1),
+              color: AppColors.primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
               'Completed',
               style: TextStyle(
                 fontSize: 10,
-                color: const Color(0xFFA64D79),
+                color:  AppColors.primary,
                 fontWeight: FontWeight.bold,
                 fontFamily: 'Roboto',
               ),
@@ -1208,7 +1206,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Icon(
                   icon,
-                  color: isActive ? const Color(0xFFA64D79) : (isDarkMode ? Colors.grey[600] : Colors.grey),
+                  color: isActive ? AppColors.primary : (isDarkMode ? Colors.grey[600] : Colors.grey),
                   size: 24,
                 ),
                 if (isDisabled)
@@ -1228,7 +1226,7 @@ class _HomeScreenState extends State<HomeScreen> {
               label,
               style: TextStyle(
                 fontSize: 12,
-                color: isActive ? const Color(0xFFA64D79) : (isDarkMode ? Colors.grey[600] : Colors.grey),
+                color: isActive ?  AppColors.primary : (isDarkMode ? Colors.grey[600] : Colors.grey),
                 fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                 fontFamily: 'Roboto',
               ),
@@ -1293,3 +1291,5 @@ class BubbleArrowPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+

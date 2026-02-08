@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:tapmate/Screen/home/other_user_profile_screen.dart';
 import 'package:tapmate/Screen/services/dummy_data_service.dart';
-
+import 'package:tapmate/Screen/constants/app_colors.dart';
 // Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
-
 class FollowRequestsScreen extends StatefulWidget {
   const FollowRequestsScreen({super.key});
 
@@ -68,7 +64,7 @@ class _FollowRequestsScreenState extends State<FollowRequestsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Follow Requests'),
-        backgroundColor: primaryColor,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
       body: _pendingRequests.isEmpty
@@ -108,7 +104,7 @@ class _FollowRequestsScreenState extends State<FollowRequestsScreen> {
             child: ListTile(
               leading: CircleAvatar(
                 radius: 25,
-                backgroundColor: primaryColor.withOpacity(0.1),
+                backgroundColor: AppColors.primary.withOpacity(0.1),
                 child: Text(
                   request['avatar'] ?? '👤',
                   style: const TextStyle(fontSize: 24),
@@ -157,7 +153,7 @@ class _FollowRequestsScreenState extends State<FollowRequestsScreen> {
                       request['full_name'] ?? 'User',
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: primaryColor,
+                      backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     ),
                     child: const Text('Accept', style: TextStyle(color: Colors.white)),
@@ -183,3 +179,4 @@ class _FollowRequestsScreenState extends State<FollowRequestsScreen> {
     );
   }
 }
+

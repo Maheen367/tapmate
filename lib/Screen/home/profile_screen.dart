@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
-// Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
 
 class ProfileScreen extends StatelessWidget {
   final String userName;
@@ -36,7 +33,7 @@ class ProfileScreen extends StatelessWidget {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [darkPurple, secondaryColor, primaryColor],
+                  colors: [AppColors.accent, AppColors.secondary, AppColors.primary],
                 ),
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(30),
@@ -76,7 +73,7 @@ class ProfileScreen extends StatelessWidget {
                     // Profile Info
                     CircleAvatar(
                       radius: 50,
-                      backgroundColor: primaryColor.withOpacity(0.2),
+                      backgroundColor: AppColors.primary.withOpacity(0.2),
                       child: Text(
                         userAvatar,
                         style: const TextStyle(fontSize: 50),
@@ -88,7 +85,7 @@ class ProfileScreen extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: darkPurple,
+                        color: AppColors.accent,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -111,7 +108,7 @@ class ProfileScreen extends StatelessWidget {
                           child: ElevatedButton(
                             onPressed: () {},
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: primaryColor,
+                              backgroundColor: AppColors.primary,
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -130,13 +127,13 @@ class ProfileScreen extends StatelessWidget {
                         OutlinedButton(
                           onPressed: () {},
                           style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: primaryColor, width: 2),
+                            side: BorderSide(color: AppColors.primary, width: 2),
                             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Icon(Icons.message, color: primaryColor),
+                          child: const Icon(Icons.message, color: AppColors.primary),
                         ),
                       ],
                     ),
@@ -150,7 +147,7 @@ class ProfileScreen extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: darkPurple,
+                          color: AppColors.accent,
                         ),
                       ),
                     ),
@@ -169,8 +166,8 @@ class ProfileScreen extends StatelessWidget {
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
-                                primaryColor.withOpacity(0.3),
-                                primaryColor.withOpacity(0.1),
+                                AppColors.primary.withOpacity(0.3),
+                                AppColors.primary.withOpacity(0.1),
                               ],
                             ),
                             borderRadius: BorderRadius.circular(12),
@@ -202,7 +199,7 @@ class ProfileScreen extends StatelessWidget {
           style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: primaryColor,
+            color: AppColors.primary,
           ),
         ),
         const SizedBox(height: 4),
@@ -217,6 +214,8 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 }
+
+
 
 
 

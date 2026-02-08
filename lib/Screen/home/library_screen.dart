@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../auth_provider.dart';
 import '../Auth/LoginScreen.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
-// Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
+
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -84,7 +82,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [darkPurple, secondaryColor, primaryColor],
+                  colors: [AppColors.accent, AppColors.secondary, AppColors.primary],
                 ),
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(30),
@@ -92,7 +90,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: darkPurple.withOpacity(0.3),
+                    color: AppColors.accent.withOpacity(0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -180,7 +178,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                             child: Container(
                               padding: const EdgeInsets.all(6),
                               decoration: const BoxDecoration(
-                                color: primaryColor,
+                                color: AppColors.primary,
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -197,7 +195,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         'Library Locked',
                         style: TextStyle(
                           fontSize: 24,
-                          color: darkPurple,
+                          color: AppColors.accent,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -222,7 +220,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryColor,
+                          backgroundColor: AppColors.primary,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 32,
                             vertical: 16,
@@ -299,9 +297,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
           _selectedFilter = label;
         });
       },
-      selectedColor: primaryColor,
+      selectedColor: AppColors.primary,
       labelStyle: TextStyle(
-        color: isSelected ? Colors.white : darkPurple,
+        color: isSelected ? Colors.white : AppColors.accent,
         fontWeight: FontWeight.w600,
       ),
       checkmarkColor: Colors.white,
@@ -316,7 +314,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: darkPurple.withOpacity(0.1),
+          color: AppColors.accent.withOpacity(0.1),
         ),
         boxShadow: [
           BoxShadow(
@@ -335,8 +333,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  primaryColor.withOpacity(0.3),
-                  primaryColor.withOpacity(0.1),
+                  AppColors.primary.withOpacity(0.3),
+                  AppColors.primary.withOpacity(0.1),
                 ],
               ),
               borderRadius: BorderRadius.circular(12),
@@ -359,7 +357,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: darkPurple,
+                    color: AppColors.accent,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -370,14 +368,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: primaryColor.withOpacity(0.1),
+                        color: AppColors.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         item['platform'] as String,
                         style: TextStyle(
                           fontSize: 11,
-                          color: primaryColor,
+                          color: AppColors.primary,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -405,7 +403,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
           // Actions
           PopupMenuButton(
-            icon: const Icon(Icons.more_vert, color: darkPurple),
+            icon: const Icon(Icons.more_vert, color: AppColors.accent),
             itemBuilder: (context) => [
               const PopupMenuItem(
                 value: 'play',
@@ -447,6 +445,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 }
+
+
 
 
 

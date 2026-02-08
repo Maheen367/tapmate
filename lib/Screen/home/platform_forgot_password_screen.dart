@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 
-// Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
-
+import 'package:tapmate/Screen/constants/app_colors.dart';
 class PlatformForgotPasswordScreen extends StatefulWidget {
   final String platformName;
   final String platformId;
@@ -50,7 +46,7 @@ class _PlatformForgotPasswordScreenState extends State<PlatformForgotPasswordScr
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [darkPurple, secondaryColor, primaryColor],
+                  colors: [AppColors.accent, AppColors.secondary, AppColors.primary],
                 ),
                 borderRadius: BorderRadius.only(
                   bottomLeft: Radius.circular(30),
@@ -123,12 +119,12 @@ class _PlatformForgotPasswordScreenState extends State<PlatformForgotPasswordScr
                         Container(
                           padding: const EdgeInsets.all(30),
                           decoration: BoxDecoration(
-                            color: primaryColor.withOpacity(0.1),
+                            color: AppColors.primary.withOpacity(0.1),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
                             Icons.check_circle_outline,
-                            color: primaryColor,
+                            color: AppColors.primary,
                             size: 60,
                           ),
                         ),
@@ -138,7 +134,7 @@ class _PlatformForgotPasswordScreenState extends State<PlatformForgotPasswordScr
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: darkPurple,
+                            color: AppColors.accent,
                           ),
                         ),
                         const SizedBox(height: 10),
@@ -167,14 +163,14 @@ class _PlatformForgotPasswordScreenState extends State<PlatformForgotPasswordScr
                             child: Ink(
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
-                                  colors: [secondaryColor, primaryColor],
+                                  colors: [AppColors.secondary, AppColors.primary],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: primaryColor.withOpacity(0.3),
+                                    color: AppColors.primary.withOpacity(0.3),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -198,7 +194,7 @@ class _PlatformForgotPasswordScreenState extends State<PlatformForgotPasswordScr
                         const Icon(
                           Icons.lock_reset,
                           size: 60,
-                          color: primaryColor,
+                          color: AppColors.primary,
                         ),
                         const SizedBox(height: 20),
                         Text(
@@ -215,7 +211,7 @@ class _PlatformForgotPasswordScreenState extends State<PlatformForgotPasswordScr
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
-                            prefixIcon: Icon(Icons.email_outlined, color: primaryColor),
+                            prefixIcon: Icon(Icons.email_outlined, color: AppColors.primary),
                             hintText: 'Email Address',
                             filled: true,
                             fillColor: Colors.grey[50],
@@ -225,11 +221,11 @@ class _PlatformForgotPasswordScreenState extends State<PlatformForgotPasswordScr
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide(color: darkPurple.withOpacity(0.1)),
+                              borderSide: BorderSide(color: AppColors.accent.withOpacity(0.1)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
-                              borderSide: BorderSide(color: primaryColor, width: 2),
+                              borderSide: BorderSide(color: AppColors.primary, width: 2),
                             ),
                           ),
                           validator: (value) {
@@ -258,14 +254,14 @@ class _PlatformForgotPasswordScreenState extends State<PlatformForgotPasswordScr
                             child: Ink(
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
-                                  colors: [secondaryColor, primaryColor],
+                                  colors: [AppColors.secondary, AppColors.primary],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: primaryColor.withOpacity(0.3),
+                                    color: AppColors.primary.withOpacity(0.3),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -300,7 +296,7 @@ class _PlatformForgotPasswordScreenState extends State<PlatformForgotPasswordScr
                           child: Text(
                             'Back to Sign In',
                             style: TextStyle(
-                              color: darkPurple,
+                              color: AppColors.accent,
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                             ),
@@ -339,7 +335,7 @@ class _PlatformForgotPasswordScreenState extends State<PlatformForgotPasswordScr
             content: Text(
               'Password reset link sent to ${_emailController.text}',
             ),
-            backgroundColor: primaryColor,
+            backgroundColor: AppColors.primary,
             duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -351,6 +347,8 @@ class _PlatformForgotPasswordScreenState extends State<PlatformForgotPasswordScr
     }
   }
 }
+
+
 
 
 

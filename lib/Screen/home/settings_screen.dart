@@ -6,11 +6,8 @@ import 'package:tapmate/utils/guide_manager.dart';
 import 'package:tapmate/auth_provider.dart';
 import 'package:tapmate/Screen/Auth/LoginScreen.dart';
 import 'package:tapmate/Screen/home/follow_requests_screen.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
-// Theme Colors
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -90,7 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ? 'Account is now private. New followers must request to follow you.'
               : 'Account is now public. Anyone can follow you and see your posts.',
         ),
-        backgroundColor: primaryColor,
+        backgroundColor: AppColors.primary,
       ),
     );
 
@@ -132,7 +129,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [darkPurple, secondaryColor, primaryColor],
+                  colors: [AppColors.accent, AppColors.secondary, AppColors.primary],
                 ),
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(30),
@@ -140,7 +137,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: darkPurple.withOpacity(0.3),
+                    color: AppColors.accent.withOpacity(0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -237,7 +234,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: const Text('No pending follow requests'),
-                                backgroundColor: primaryColor,
+                                backgroundColor: AppColors.primary,
                               ),
                             );
                           }
@@ -346,7 +343,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(value ? 'Data saver enabled' : 'Data saver disabled'),
-                              backgroundColor: primaryColor,
+                              backgroundColor: AppColors.primary,
                             ),
                           );
                         },
@@ -371,7 +368,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(value ? 'Notifications enabled' : 'Notifications disabled'),
-                              backgroundColor: primaryColor,
+                              backgroundColor: AppColors.primary,
                             ),
                           );
                         },
@@ -391,7 +388,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(value ? 'Dark mode enabled' : 'Dark mode disabled'),
-                              backgroundColor: primaryColor,
+                              backgroundColor: AppColors.primary,
                             ),
                           );
                         },
@@ -533,7 +530,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         color: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: primaryColor.withOpacity(0.2),
+          color: AppColors.primary.withOpacity(0.2),
           width: 1,
         ),
         boxShadow: [
@@ -561,7 +558,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : darkPurple,
+                    color: isDarkMode ? Colors.white : AppColors.accent,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -576,7 +573,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: primaryColor.withOpacity(0.1),
+                    color: AppColors.primary.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -584,7 +581,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: primaryColor,
+                      color: AppColors.primary,
                     ),
                   ),
                 ),
@@ -594,7 +591,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           IconButton(
             icon: Icon(
               Icons.edit_outlined,
-              color: primaryColor,
+              color: AppColors.primary,
               size: 22,
             ),
             onPressed: () {
@@ -614,7 +611,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: isDarkMode ? Colors.white : darkPurple,
+          color: isDarkMode ? Colors.white : AppColors.accent,
         ),
       ),
     );
@@ -653,17 +650,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: primaryColor.withOpacity(0.1),
+          color: AppColors.primary.withOpacity(0.1),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, color: primaryColor, size: 22),
+        child: Icon(icon, color: AppColors.primary, size: 22),
       ),
       title: Text(
         title,
         style: TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w600,
-          color: isDarkMode ? Colors.white : darkPurple,
+          color: isDarkMode ? Colors.white : AppColors.accent,
         ),
       ),
       subtitle: Text(
@@ -717,17 +714,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: primaryColor.withOpacity(0.1),
+          color: AppColors.primary.withOpacity(0.1),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, color: primaryColor, size: 22),
+        child: Icon(icon, color: AppColors.primary, size: 22),
       ),
       title: Text(
         title,
         style: TextStyle(
           fontSize: 15,
           fontWeight: FontWeight.w600,
-          color: isDarkMode ? Colors.white : darkPurple,
+          color: isDarkMode ? Colors.white : AppColors.accent,
         ),
       ),
       subtitle: Text(
@@ -740,10 +737,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       trailing: Switch(
         value: value,
         onChanged: onChanged,
-        activeColor: primaryColor,
+        activeColor: AppColors.primary,
         trackColor: MaterialStateProperty.resolveWith((states) {
           if (states.contains(MaterialState.selected)) {
-            return primaryColor.withOpacity(0.5);
+            return AppColors.primary.withOpacity(0.5);
           }
           return Colors.grey[300];
         }),
@@ -764,12 +761,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            Icon(Icons.group_add, color: primaryColor),
+            Icon(Icons.group_add, color: AppColors.primary),
             const SizedBox(width: 10),
             Text(
               'Pending Follow Requests',
               style: TextStyle(
-                color: _darkMode ? Colors.white : darkPurple,
+                color: _darkMode ? Colors.white : AppColors.accent,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -779,7 +776,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ? Text(
           'No pending follow requests.',
           style: TextStyle(
-            color: _darkMode ? Colors.grey[300] : darkPurple,
+            color: _darkMode ? Colors.grey[300] : AppColors.accent,
           ),
         )
             : SizedBox(
@@ -790,7 +787,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Text(
                 'You have ${pendingRequests.length} pending follow request(s).',
                 style: TextStyle(
-                  color: _darkMode ? Colors.grey[300] : darkPurple,
+                  color: _darkMode ? Colors.grey[300] : AppColors.accent,
                 ),
               ),
               const SizedBox(height: 16),
@@ -849,7 +846,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   MaterialPageRoute(builder: (context) => const FollowRequestsScreen()),
                 );
               },
-              style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
               child: const Text('Manage All'),
             ),
         ],
@@ -867,7 +864,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: Text(
           'Privacy Settings',
           style: TextStyle(
-            color: isDarkMode ? Colors.white : darkPurple,
+            color: isDarkMode ? Colors.white : AppColors.accent,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -879,7 +876,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SwitchListTile(
                 title: Text(
                   'Private Account',
-                  style: TextStyle(color: isDarkMode ? Colors.white : darkPurple),
+                  style: TextStyle(color: isDarkMode ? Colors.white : AppColors.accent),
                 ),
                 subtitle: Text(
                   _isPrivateAccount
@@ -889,7 +886,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 value: _isPrivateAccount,
                 onChanged: _togglePrivateAccount,
-                activeColor: primaryColor,
+                activeColor: AppColors.primary,
               ),
               const Divider(),
 
@@ -897,7 +894,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SwitchListTile(
                 title: Text(
                   'Show Online Status',
-                  style: TextStyle(color: isDarkMode ? Colors.white : darkPurple),
+                  style: TextStyle(color: isDarkMode ? Colors.white : AppColors.accent),
                 ),
                 subtitle: Text(
                   'Show when you\'re online',
@@ -909,7 +906,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _showOnlineStatus = value;
                   });
                 },
-                activeColor: primaryColor,
+                activeColor: AppColors.primary,
               ),
               const Divider(),
 
@@ -917,7 +914,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SwitchListTile(
                 title: Text(
                   'Allow Tagging',
-                  style: TextStyle(color: isDarkMode ? Colors.white : darkPurple),
+                  style: TextStyle(color: isDarkMode ? Colors.white : AppColors.accent),
                 ),
                 subtitle: Text(
                   'Allow others to tag you in posts',
@@ -929,7 +926,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _allowTagging = value;
                   });
                 },
-                activeColor: primaryColor,
+                activeColor: AppColors.primary,
               ),
               const Divider(),
 
@@ -937,7 +934,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SwitchListTile(
                 title: Text(
                   'Allow Comments',
-                  style: TextStyle(color: isDarkMode ? Colors.white : darkPurple),
+                  style: TextStyle(color: isDarkMode ? Colors.white : AppColors.accent),
                 ),
                 subtitle: Text(
                   'Allow comments on your posts',
@@ -949,7 +946,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _allowComments = value;
                   });
                 },
-                activeColor: primaryColor,
+                activeColor: AppColors.primary,
               ),
               const Divider(),
 
@@ -957,7 +954,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               SwitchListTile(
                 title: Text(
                   'Show Activity',
-                  style: TextStyle(color: isDarkMode ? Colors.white : darkPurple),
+                  style: TextStyle(color: isDarkMode ? Colors.white : AppColors.accent),
                 ),
                 subtitle: Text(
                   'Show your likes and comments',
@@ -969,7 +966,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _showActivity = value;
                   });
                 },
-                activeColor: primaryColor,
+                activeColor: AppColors.primary,
               ),
 
               // Privacy Info Box
@@ -977,17 +974,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 margin: const EdgeInsets.only(top: 16),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: _isPrivateAccount ? primaryColor.withOpacity(0.1) : Colors.grey[100],
+                  color: _isPrivateAccount ? AppColors.primary.withOpacity(0.1) : Colors.grey[100],
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: _isPrivateAccount ? Colors.grey[300]! : primaryColor.withOpacity(0.3),
+                    color: _isPrivateAccount ? Colors.grey[300]! : AppColors.primary.withOpacity(0.3),
                   ),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       _isPrivateAccount ? Icons.lock : Icons.lock_open,
-                      color: _isPrivateAccount ? primaryColor : Colors.grey,
+                      color: _isPrivateAccount ? AppColors.primary : Colors.grey,
                       size: 20,
                     ),
                     const SizedBox(width: 10),
@@ -998,7 +995,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             : 'When your account is public, anyone can see your posts and follow you.',
                         style: TextStyle(
                           fontSize: 12,
-                          color: _isPrivateAccount ? primaryColor : Colors.grey[600],
+                          color: _isPrivateAccount ? AppColors.primary : Colors.grey[600],
                         ),
                       ),
                     ),
@@ -1036,7 +1033,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: isDarkMode ? Colors.white : darkPurple,
+            color: isDarkMode ? Colors.white : AppColors.accent,
           ),
         ),
         content: Column(
@@ -1053,7 +1050,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             LinearProgressIndicator(
               value: _storageUsed / _storageTotal,
               backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-              valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
               minHeight: 10,
               borderRadius: BorderRadius.circular(5),
             ),
@@ -1087,7 +1084,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Close',
-              style: TextStyle(color: primaryColor),
+              style: TextStyle(color: AppColors.primary),
             ),
           ),
         ],
@@ -1104,7 +1101,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Text(
             label,
             style: TextStyle(
-              color: isDarkMode ? Colors.grey[300] : darkPurple,
+              color: isDarkMode ? Colors.grey[300] : AppColors.accent,
               fontSize: 14,
             ),
           ),
@@ -1112,7 +1109,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             '${size.toStringAsFixed(1)} GB',
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: primaryColor,
+              color: AppColors.primary,
               fontSize: 14,
             ),
           ),
@@ -1129,12 +1126,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            Icon(Icons.backup, color: primaryColor),
+            Icon(Icons.backup, color: AppColors.primary),
             const SizedBox(width: 10),
             Text(
               'Backup Information',
               style: TextStyle(
-                color: isDarkMode ? Colors.white : darkPurple,
+                color: isDarkMode ? Colors.white : AppColors.accent,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1160,7 +1157,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _performBackup(isDarkMode);
               Navigator.pop(context);
             },
-            style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Backup Now'),
           ),
         ],
@@ -1183,7 +1180,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Text(
             value,
             style: TextStyle(
-              color: isDarkMode ? Colors.white : darkPurple,
+              color: isDarkMode ? Colors.white : AppColors.accent,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1207,7 +1204,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               width: 80,
               child: CircularProgressIndicator(
                 strokeWidth: 4,
-                valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
               ),
             ),
             const SizedBox(height: 20),
@@ -1216,7 +1213,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: isDarkMode ? Colors.white : darkPurple,
+                color: isDarkMode ? Colors.white : AppColors.accent,
               ),
             ),
             const SizedBox(height: 10),
@@ -1258,14 +1255,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: Text(
           'Auto Backup',
           style: TextStyle(
-            color: isDarkMode ? Colors.white : darkPurple,
+            color: isDarkMode ? Colors.white : AppColors.accent,
             fontWeight: FontWeight.bold,
           ),
         ),
         content: Text(
           'When enabled, TapMate will automatically backup your videos and settings daily when connected to Wi-Fi.',
           style: TextStyle(
-            color: isDarkMode ? Colors.grey[300] : darkPurple,
+            color: isDarkMode ? Colors.grey[300] : AppColors.accent,
             height: 1.5,
           ),
         ),
@@ -1298,7 +1295,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : darkPurple,
+                color: isDarkMode ? Colors.white : AppColors.accent,
               ),
             ),
             const SizedBox(height: 20),
@@ -1315,7 +1312,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: Text(
         quality,
         style: TextStyle(
-          color: isDarkMode ? Colors.white : darkPurple,
+          color: isDarkMode ? Colors.white : AppColors.accent,
           fontSize: 16,
         ),
       ),
@@ -1327,7 +1324,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
       trailing: isSelected
-          ? Icon(Icons.check, color: primaryColor)
+          ? Icon(Icons.check, color: AppColors.primary)
           : null,
       onTap: () {
         setState(() {
@@ -1337,7 +1334,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Video quality set to $quality'),
-            backgroundColor: primaryColor,
+            backgroundColor: AppColors.primary,
           ),
         );
       },
@@ -1373,7 +1370,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : darkPurple,
+                color: isDarkMode ? Colors.white : AppColors.accent,
               ),
             ),
             const SizedBox(height: 20),
@@ -1390,7 +1387,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: Text(
         location,
         style: TextStyle(
-          color: isDarkMode ? Colors.white : darkPurple,
+          color: isDarkMode ? Colors.white : AppColors.accent,
           fontSize: 16,
         ),
       ),
@@ -1402,7 +1399,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
       trailing: isSelected
-          ? Icon(Icons.check, color: primaryColor)
+          ? Icon(Icons.check, color: AppColors.primary)
           : null,
       onTap: () {
         setState(() {
@@ -1412,7 +1409,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Storage location set to $location'),
-            backgroundColor: primaryColor,
+            backgroundColor: AppColors.primary,
           ),
         );
       },
@@ -1454,7 +1451,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: isDarkMode ? Colors.white : darkPurple,
+                color: isDarkMode ? Colors.white : AppColors.accent,
               ),
             ),
             const SizedBox(height: 20),
@@ -1471,12 +1468,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: Text(
         language,
         style: TextStyle(
-          color: isDarkMode ? Colors.white : darkPurple,
+          color: isDarkMode ? Colors.white : AppColors.accent,
           fontSize: 16,
         ),
       ),
       trailing: isSelected
-          ? Icon(Icons.check, color: primaryColor)
+          ? Icon(Icons.check, color: AppColors.primary)
           : null,
       onTap: () {
         setState(() {
@@ -1486,7 +1483,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Language set to $language'),
-            backgroundColor: primaryColor,
+            backgroundColor: AppColors.primary,
           ),
         );
       },
@@ -1502,7 +1499,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: Text(
           'Email Settings',
           style: TextStyle(
-            color: isDarkMode ? Colors.white : darkPurple,
+            color: isDarkMode ? Colors.white : AppColors.accent,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -1512,7 +1509,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SwitchListTile(
               title: Text(
                 'Email Notifications',
-                style: TextStyle(color: isDarkMode ? Colors.white : darkPurple),
+                style: TextStyle(color: isDarkMode ? Colors.white : AppColors.accent),
               ),
               subtitle: Text(
                 'Receive email updates',
@@ -1520,12 +1517,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               value: true,
               onChanged: (value) {},
-              activeColor: primaryColor,
+              activeColor: AppColors.primary,
             ),
             SwitchListTile(
               title: Text(
                 'Marketing Emails',
-                style: TextStyle(color: isDarkMode ? Colors.white : darkPurple),
+                style: TextStyle(color: isDarkMode ? Colors.white : AppColors.accent),
               ),
               subtitle: Text(
                 'Receive promotional emails',
@@ -1533,7 +1530,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               value: false,
               onChanged: (value) {},
-              activeColor: primaryColor,
+              activeColor: AppColors.primary,
             ),
           ],
         ),
@@ -1555,12 +1552,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            Icon(Icons.delete_outline, color: primaryColor),
+            Icon(Icons.delete_outline, color: AppColors.primary),
             const SizedBox(width: 10),
             Text(
               'Clear Cache',
               style: TextStyle(
-                color: isDarkMode ? Colors.white : darkPurple,
+                color: isDarkMode ? Colors.white : AppColors.accent,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1569,7 +1566,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         content: Text(
           'This will clear temporary app data and free up 0.2 GB of storage. Your videos and settings will not be affected.',
           style: TextStyle(
-            color: isDarkMode ? Colors.grey[300] : darkPurple,
+            color: isDarkMode ? Colors.grey[300] : AppColors.accent,
             height: 1.5,
           ),
         ),
@@ -1595,7 +1592,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Clear'),
           ),
         ],
@@ -1616,7 +1613,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Text(
               'Reset Settings',
               style: TextStyle(
-                color: isDarkMode ? Colors.white : darkPurple,
+                color: isDarkMode ? Colors.white : AppColors.accent,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1625,7 +1622,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         content: Text(
           'This will reset all app settings to their default values. Your videos and account data will not be affected.',
           style: TextStyle(
-            color: isDarkMode ? Colors.grey[300] : darkPurple,
+            color: isDarkMode ? Colors.grey[300] : AppColors.accent,
             height: 1.5,
           ),
         ),
@@ -1691,7 +1688,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: Text(
           'Help Center',
           style: TextStyle(
-            color: isDarkMode ? Colors.white : darkPurple,
+            color: isDarkMode ? Colors.white : AppColors.accent,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -1705,7 +1702,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: Text(
                   faqs[index]['q']!,
                   style: TextStyle(
-                    color: isDarkMode ? Colors.white : darkPurple,
+                    color: isDarkMode ? Colors.white : AppColors.accent,
                     fontSize: 14,
                   ),
                 ),
@@ -1743,7 +1740,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: Text(
           'Report a Bug',
           style: TextStyle(
-            color: isDarkMode ? Colors.white : darkPurple,
+            color: isDarkMode ? Colors.white : AppColors.accent,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -1753,7 +1750,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             TextField(
               decoration: InputDecoration(
                 labelText: 'Subject',
-                labelStyle: TextStyle(color: isDarkMode ? Colors.grey[400] : darkPurple),
+                labelStyle: TextStyle(color: isDarkMode ? Colors.grey[400] : AppColors.accent),
                 border: const OutlineInputBorder(),
               ),
             ),
@@ -1762,7 +1759,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               maxLines: 4,
               decoration: InputDecoration(
                 labelText: 'Description',
-                labelStyle: TextStyle(color: isDarkMode ? Colors.grey[400] : darkPurple),
+                labelStyle: TextStyle(color: isDarkMode ? Colors.grey[400] : AppColors.accent),
                 border: const OutlineInputBorder(),
                 hintText: 'Describe the issue in detail...',
               ),
@@ -1784,7 +1781,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('Submit'),
           ),
         ],
@@ -1800,12 +1797,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            Icon(Icons.info_outline, color: primaryColor),
+            Icon(Icons.info_outline, color: AppColors.primary),
             const SizedBox(width: 10),
             Text(
               'About TapMate',
               style: TextStyle(
-                color: isDarkMode ? Colors.white : darkPurple,
+                color: isDarkMode ? Colors.white : AppColors.accent,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1818,7 +1815,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Text(
               'Version: 1.0.0',
               style: TextStyle(
-                color: isDarkMode ? Colors.grey[300] : darkPurple,
+                color: isDarkMode ? Colors.grey[300] : AppColors.accent,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1826,7 +1823,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Text(
               'TapMate - Your all-in-one video downloader and social platform. Download videos from YouTube, Instagram, TikTok and more, then share with friends!',
               style: TextStyle(
-                color: isDarkMode ? Colors.grey[300] : darkPurple,
+                color: isDarkMode ? Colors.grey[300] : AppColors.accent,
                 height: 1.5,
               ),
             ),
@@ -1865,7 +1862,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Text(
               'Log Out',
               style: TextStyle(
-                color: isDarkMode ? Colors.white : darkPurple,
+                color: isDarkMode ? Colors.white : AppColors.accent,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -1874,7 +1871,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         content: Text(
           'Are you sure you want to log out? You can sign back in anytime.',
           style: TextStyle(
-            color: isDarkMode ? Colors.grey[300] : darkPurple,
+            color: isDarkMode ? Colors.grey[300] : AppColors.accent,
             height: 1.5,
           ),
         ),
@@ -1914,13 +1911,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            Icon(Icons.tour_outlined, color: primaryColor, size: 28),
+            Icon(Icons.tour_outlined, color: AppColors.primary, size: 28),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 'Take Tour Again',
                 style: TextStyle(
-                  color: isDarkMode ? Colors.white : darkPurple,
+                  color: isDarkMode ? Colors.white : AppColors.accent,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1931,7 +1928,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         content: Text(
           'This will restart the guided onboarding tour. You\'ll see highlights for all key features of TapMate.',
           style: TextStyle(
-            color: isDarkMode ? Colors.grey[300] : darkPurple,
+            color: isDarkMode ? Colors.grey[300] : AppColors.accent,
             fontSize: 15,
             height: 1.5,
           ),
@@ -1957,14 +1954,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     title: Row(
                       children: [
-                        const Icon(Icons.lock_outline, color: primaryColor),
+                        const Icon(Icons.lock_outline, color: AppColors.primary),
                         const SizedBox(width: 10),
-                        Text('Guests cannot take the tour', style: TextStyle(color: isDarkMode ? Colors.white : darkPurple)),
+                        Text('Guests cannot take the tour', style: TextStyle(color: isDarkMode ? Colors.white : AppColors.accent)),
                       ],
                     ),
                     content: Text(
                       'Create an account to see the full guided tour and learn how to use TapMate.',
-                      style: TextStyle(color: isDarkMode ? Colors.grey[300] : darkPurple),
+                      style: TextStyle(color: isDarkMode ? Colors.grey[300] : AppColors.accent),
                     ),
                     actions: [
                       TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Maybe Later')),
@@ -1976,7 +1973,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             MaterialPageRoute(builder: (context) => const LoginScreen()),
                           );
                         },
-                        style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
                         child: const Text('Sign Up', style: TextStyle(color: Colors.white)),
                       ),
                     ],
@@ -1993,7 +1990,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
+              backgroundColor: AppColors.primary,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -2011,3 +2008,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 }
+

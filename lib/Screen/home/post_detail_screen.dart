@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:tapmate/Screen/home/other_user_profile_screen.dart';
 import 'package:tapmate/Screen/services/dummy_data_service.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
-const Color primaryColor = Color(0xFFA64D79);
-const Color secondaryColor = Color(0xFF6A1E55);
-const Color darkPurple = Color(0xFF3B1C32);
 
 class PostDetailScreen extends StatefulWidget {
   final String postId;
@@ -151,7 +149,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
+              backgroundColor: AppColors.primary,
             ),
             child: const Text('Download', style: TextStyle(color: Colors.white)),
           ),
@@ -183,14 +181,14 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           child: Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.arrow_back, color: darkPurple),
+                icon: const Icon(Icons.arrow_back, color: AppColors.accent),
                 onPressed: () => Navigator.pop(context),
               ),
               GestureDetector(
                 onTap: () => _viewUserProfile(_post['user_id']),
                 child: CircleAvatar(
                   radius: 18,
-                  backgroundColor: primaryColor.withOpacity(0.2),
+                  backgroundColor: AppColors.primary.withOpacity(0.2),
                   child: Text(
                     _post['user_avatar'] ?? '👤',
                     style: const TextStyle(fontSize: 16),
@@ -220,7 +218,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.more_vert, color: darkPurple),
+                icon: const Icon(Icons.more_vert, color: AppColors.accent),
                 onPressed: () {
                   _showPostOptions();
                 },
@@ -255,19 +253,19 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           IconButton(
                             icon: Icon(
                               _isLiked ? Icons.favorite : Icons.favorite_border,
-                              color: _isLiked ? Colors.red : darkPurple,
+                              color: _isLiked ? Colors.red : AppColors.accent,
                               size: 28,
                             ),
                             onPressed: _toggleLike,
                           ),
                           IconButton(
-                            icon: const Icon(Icons.comment, color: darkPurple, size: 28),
+                            icon: const Icon(Icons.comment, color: AppColors.accent, size: 28),
                             onPressed: () {
                               // Scroll to comment section
                             },
                           ),
                           IconButton(
-                            icon: const Icon(Icons.share, color: darkPurple, size: 28),
+                            icon: const Icon(Icons.share, color: AppColors.accent, size: 28),
                             onPressed: () {
                               _sharePost();
                             },
@@ -276,7 +274,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       ),
                       if (_post['can_download'] == true)
                         IconButton(
-                          icon: const Icon(Icons.download, color: darkPurple, size: 28),
+                          icon: const Icon(Icons.download, color: AppColors.accent, size: 28),
                           onPressed: _downloadVideo,
                         ),
                     ],
@@ -334,7 +332,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 18,
-                        color: darkPurple,
+                        color: AppColors.accent,
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -388,7 +386,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           ),
                           const SizedBox(width: 8),
                           IconButton(
-                          icon: Icon(Icons.send, color: primaryColor),
+                          icon: Icon(Icons.send, color: AppColors.primary),
                           onPressed: _addComment,
                           ),
                           ],
@@ -410,7 +408,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 onTap: () => _viewUserProfile(comment['user_id']),
                 child: CircleAvatar(
                 radius: 18,
-                backgroundColor: primaryColor.withOpacity(0.2),
+                backgroundColor: AppColors.primary.withOpacity(0.2),
                 child: Text(
                 comment['user_avatar'] ?? '👤',
                 style: const TextStyle(fontSize: 16),
@@ -492,7 +490,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
             ListTile(
-            leading: const Icon(Icons.save_alt, color: primaryColor),
+            leading: const Icon(Icons.save_alt, color: AppColors.primary),
             title: const Text('Save Post'),
             onTap: () {
             Navigator.pop(context);
@@ -502,7 +500,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             },
             ),
             ListTile(
-            leading: const Icon(Icons.copy, color: primaryColor),
+            leading: const Icon(Icons.copy, color: AppColors.primary),
             title: const Text('Copy Link'),
             onTap: () {
             Navigator.pop(context);
@@ -512,7 +510,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             },
             ),
             ListTile(
-            leading: const Icon(Icons.qr_code, color: primaryColor),
+            leading: const Icon(Icons.qr_code, color: AppColors.primary),
             title: const Text('QR Code'),
             onTap: () {
             Navigator.pop(context);
@@ -550,7 +548,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         style: TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.bold,
-        color: darkPurple,
+        color: AppColors.accent,
         ),
         ),
         const SizedBox(height: 20),
@@ -589,17 +587,17 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     Container(
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
-    color: primaryColor.withOpacity(0.1),
+    color: AppColors.primary.withOpacity(0.1),
     shape: BoxShape.circle,
     ),
-    child: Icon(icon, color: primaryColor, size: 28),
+    child: Icon(icon, color: AppColors.primary, size: 28),
     ),
     const SizedBox(height: 8),
     Text(
     label,
     style: const TextStyle(
     fontSize: 12,
-    color: darkPurple,
+    color: AppColors.accent,
     ),
     ),
     ],
@@ -626,7 +624,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
+                backgroundColor: AppColors.primary,
               ),
               child: const Text('Submit', style: TextStyle(color: Colors.white)),
             ),
@@ -635,3 +633,4 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       );
     }
   }
+
