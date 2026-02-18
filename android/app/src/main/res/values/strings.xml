@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 👇 FACEBOOK APP ID -->
+    <string name="facebook_app_id">2011355303057647</string>
+    <string name="fb_login_protocol_scheme">fb2011355303057647</string>
+
+    <!-- 👇 NEW: FACEBOOK CLIENT TOKEN (Portal se copy karo) -->
+    <string name="facebook_client_token">b4e98bc60ccbec9fa96f0b2bbb3d4961</string>
+
+    <!-- Tumhari existing app name -->
+    <string name="app_name">tapmatefyp</string>
+</resources>

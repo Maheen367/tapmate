@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "623428847751",
+    "project_id": "tapmate-fyp",
+    "storage_bucket": "tapmate-fyp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:623428847751:android:152fc9f72087b79d5a1022",
+        "android_client_info": {
+          "package_name": "com.example.tapmatefyp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "623428847751-ng5nb7je4divg7anv19r81t9j3n5tdsb.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.tapmatefyp",
+            "certificate_hash": "f1595f1106707f89c33a53d6cee0cf25d43a1be6"
+          }
+        },
+        {
+          "client_id": "623428847751-j1e4nn8ea51vu5br1s5qfujekln3mad4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCcjXZJBtrGDUzuAo5V2xQVPt6P7P40wxA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "623428847751-j1e4nn8ea51vu5br1s5qfujekln3mad4.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "623428847751-vq076vhp6gl7tojq3kqk79kp3kms309u.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.tapmatefyp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
