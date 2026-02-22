@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tapmate/Screen/Auth/LoginScreen.dart';
 import 'package:tapmate/Screen/Auth/permissionscreen.dart';
+
 import 'package:tapmate/Screen/constants/app_colors.dart';
 import 'package:tapmate/auth_provider.dart';
 import 'dart:async';
+
+import 'email_otp_screen.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -373,7 +376,7 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  // 🔥 UPDATED: _signUp method with password validation
+  // ============= 🔥🔥🔥 UPDATED SIGN UP METHOD WITH EMAIL VERIFICATION =============
   void _signUp() async {
     await _validateInputs();
 
@@ -382,7 +385,7 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
-    // 🔥 Check for any validation errors including password and confirm password
+    // 🔥 Check for any validation errors
     if (_nameError != null ||
         _emailError != null ||
         _usernameError != null ||
@@ -391,7 +394,6 @@ class _SignupScreenState extends State<SignupScreen> {
         _dobError != null ||
         _phoneError != null) {
 
-      // Show the first error
       if (_nameError != null) _showErrorSnackBar(_nameError!);
       else if (_emailError != null) _showErrorSnackBar(_emailError!);
       else if (_usernameError != null) _showErrorSnackBar(_usernameError!);
@@ -436,12 +438,20 @@ class _SignupScreenState extends State<SignupScreen> {
       if (result['success'] == true) {
         if (mounted) {
           setState(() => _signupError = null);
-          _showSuccessSnackBar('✅ Account created successfully!');
+          _showSuccessSnackBar('✅ Account created! Please verify your email.');
+
+          // Clear password fields for security
           _passwordController.clear();
           _confirmPasswordController.clear();
+
+          // Navigate to email verification screen
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const PermissionScreen()),
+            MaterialPageRoute(
+              builder: (context) => EmailVerificationScreen(
+                email: formattedEmail,
+              ),
+            ),
           );
         }
       } else {

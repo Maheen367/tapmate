@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart'; // ⬅️ YEH IMPORT ADD KARO
+import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 
 class AuthProvider extends ChangeNotifier {
   // ============= PRIVATE VARIABLES =============
@@ -21,7 +21,7 @@ class AuthProvider extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
-  final FacebookAuth _facebookAuth = FacebookAuth.instance; // ⬅️ YEH ADD KARO
+  final FacebookAuth _facebookAuth = FacebookAuth.instance;
 
   // ============= PUBLIC GETTERS =============
   bool get isGuest => _isGuest;
@@ -34,6 +34,12 @@ class AuthProvider extends ChangeNotifier {
   String get userName => _userName;
   User? get currentUser => _auth.currentUser;
   Map<String, dynamic> get userData => _userData;
+
+  // ============= 🔥 NEW: Email verification status =============
+  bool get isEmailVerified {
+    final user = _auth.currentUser;
+    return user?.emailVerified ?? false;
+  }
 
   // ============= CONSTRUCTOR =============
   AuthProvider() {
@@ -122,7 +128,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ============= 🔥 SIGN UP WITH EMAIL & PASSWORD =============
+  // ============= 🔥🔥🔥 UPDATED: SIGN UP WITH EMAIL & PASSWORD =============
   Future<Map<String, dynamic>> signUpWithEmailPassword({
     required String name,
     required String email,
@@ -130,7 +136,7 @@ class AuthProvider extends ChangeNotifier {
     String? phone,
     DateTime? dob,
     String? gender,
-    required String username, // Now required
+    required String username,
   }) async {
     try {
       debugPrint('\n🔵🔵🔵=== STARTING SIGNUP PROCESS ===🔵🔵🔵');
@@ -199,7 +205,16 @@ class AuthProvider extends ChangeNotifier {
         debugPrint('⚠️ Display name update failed: $e');
       }
 
-      // ===== STEP 4: PREPARE USER DATA =====
+      // ===== 🔥🔥🔥 STEP 4: SEND EMAIL VERIFICATION =====
+      try {
+        await result.user!.sendEmailVerification();
+        debugPrint('✅✅✅ VERIFICATION EMAIL SENT TO: $email');
+      } catch (e) {
+        debugPrint('⚠️ Could not send verification email: $e');
+        // Continue anyway - user can request verification later
+      }
+
+      // ===== STEP 5: PREPARE USER DATA =====
       String finalPhone = phone?.trim() ?? '';
 
       Map<String, dynamic> userData = {
@@ -207,7 +222,7 @@ class AuthProvider extends ChangeNotifier {
         'uid': result.user!.uid,
         'name': name,
         'email': email.trim(),
-        'username': username.toLowerCase(), // Store username in lowercase
+        'username': username.toLowerCase(),
         'phone': finalPhone,
         'dob': dob?.toIso8601String() ?? '',
         'gender': gender ?? '',
@@ -215,7 +230,8 @@ class AuthProvider extends ChangeNotifier {
 
         // Account Status
         'isActive': true,
-        'isVerified': false,
+        'isVerified': false, // Will be true after email verification
+        'emailVerified': false, // New field for tracking
         'accountType': 'user',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -240,7 +256,7 @@ class AuthProvider extends ChangeNotifier {
         },
       };
 
-      // ===== STEP 5: SAVE TO FIRESTORE =====
+      // ===== STEP 6: SAVE TO FIRESTORE =====
       try {
         debugPrint('🟡 Saving user data to Firestore...');
         await _firestore.collection('users').doc(result.user!.uid).set(userData);
@@ -248,24 +264,23 @@ class AuthProvider extends ChangeNotifier {
       } catch (e) {
         debugPrint('\n❌❌❌ FIRESTORE ERROR: $e');
         debugPrint('⚠️ User created in Auth but Firestore save failed!');
-
-        // Still return success - user can login even if profile save failed
         return {
           'success': true,
-          'message': 'Account created but profile data could not be saved. You can still login.'
+          'needsVerification': true,
+          'message': 'Account created but profile data could not be saved. Please check verification email.'
         };
       }
 
-      // ===== STEP 6: UPDATE LOCAL STATE =====
+      // ===== STEP 7: UPDATE LOCAL STATE =====
       _userId = result.user?.uid ?? '';
       _userEmail = result.user?.email ?? email;
       _userName = name;
       _userData = userData;
-      _isLoggedIn = true;
+      _isLoggedIn = true; // User is logged in but not verified
       _isGuest = false;
       _isNewSignUp = true;
 
-      // ===== STEP 7: SAVE TO SHAREDPREFERENCES =====
+      // ===== STEP 8: SAVE TO SHAREDPREFERENCES =====
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_id', _userId);
       await prefs.setString('user_email', _userEmail);
@@ -281,7 +296,11 @@ class AuthProvider extends ChangeNotifier {
       debugPrint('✅ User Name: $_userName');
       debugPrint('✅ Username: $username\n');
 
-      return {'success': true, 'message': 'Account created successfully!'};
+      return {
+        'success': true,
+        'needsVerification': true,
+        'message': 'Account created successfully! Please verify your email.'
+      };
 
     } catch (e) {
       debugPrint('\n❌❌❌ UNEXPECTED ERROR: $e');
@@ -290,7 +309,95 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ============= 🔥 LOGIN WITH EMAIL & PASSWORD =============
+  // ============= 🔥 NEW: Send verification email =============
+  Future<Map<String, dynamic>> sendVerificationEmail() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        return {'success': false, 'message': 'No user logged in'};
+      }
+
+      await user.sendEmailVerification();
+      debugPrint('✅ Verification email sent to ${user.email}');
+      return {
+        'success': true,
+        'message': 'Verification email sent! Please check your inbox.'
+      };
+    } on FirebaseAuthException catch (e) {
+      debugPrint('❌ Error sending verification: ${e.code}');
+      String message = 'Failed to send verification email';
+      switch (e.code) {
+        case 'too-many-requests':
+          message = 'Too many requests. Please try again later.';
+          break;
+        case 'network-request-failed':
+          message = 'Network error. Check your connection.';
+          break;
+        default:
+          message = 'Error: ${e.message}';
+      }
+      return {'success': false, 'message': message};
+    } catch (e) {
+      return {'success': false, 'message': 'An error occurred'};
+    }
+  }
+
+  // ============= 🔥 NEW: Check email verification status =============
+  Future<bool> checkEmailVerification() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) return false;
+
+      await user.reload();
+      final updatedUser = _auth.currentUser;
+      final isVerified = updatedUser?.emailVerified ?? false;
+
+      if (isVerified) {
+        // Update Firestore
+        await _firestore.collection('users').doc(user.uid).update({
+          'emailVerified': true,
+          'isVerified': true,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        // Update local data
+        if (_userData.isNotEmpty) {
+          _userData['emailVerified'] = true;
+          _userData['isVerified'] = true;
+        }
+
+        notifyListeners();
+      }
+
+      return isVerified;
+    } catch (e) {
+      debugPrint('Error checking verification: $e');
+      return false;
+    }
+  }
+
+  // ============= 🔥 NEW: Sign out unverified user =============
+  Future<void> signOutUnverified() async {
+    try {
+      await _auth.signOut();
+      _isLoggedIn = false;
+      _userId = '';
+      _userEmail = '';
+      _userName = '';
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_logged_in', false);
+      await prefs.setString('user_id', '');
+      await prefs.setString('user_email', '');
+      await prefs.setString('user_name', '');
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error signing out unverified user: $e');
+    }
+  }
+
+  // ============= 🔥 UPDATED: LOGIN WITH EMAIL & PASSWORD =============
   Future<Map<String, dynamic>> loginWithEmailPassword(String email, String password) async {
     try {
       debugPrint('\n🟢🟢🟢=== STARTING LOGIN PROCESS ===🟢🟢🟢');
@@ -301,6 +408,21 @@ class AuthProvider extends ChangeNotifier {
         password: password,
       );
       debugPrint('✅ User logged in: ${result.user!.uid}');
+
+      // ===== 🔥🔥🔥 CHECK EMAIL VERIFICATION =====
+      await result.user!.reload();
+      final isVerified = result.user!.emailVerified;
+
+      if (!isVerified) {
+        debugPrint('⚠️ Email not verified!');
+        await _auth.signOut();
+        return {
+          'success': false,
+          'needsVerification': true,
+          'email': email,
+          'message': 'Please verify your email before logging in.'
+        };
+      }
 
       // Get user data from Firestore
       DocumentReference userRef = _firestore.collection('users').doc(result.user!.uid);
@@ -316,6 +438,7 @@ class AuthProvider extends ChangeNotifier {
           'lastLogin': FieldValue.serverTimestamp(),
           'totalLogins': FieldValue.increment(1),
           'lastActiveAt': FieldValue.serverTimestamp(),
+          'emailVerified': true,
         });
         debugPrint('✅ Login stats updated');
       } else {
@@ -330,7 +453,8 @@ class AuthProvider extends ChangeNotifier {
           'gender': '',
           'photoURL': result.user?.photoURL ?? '',
           'isActive': true,
-          'isVerified': result.user?.emailVerified ?? false,
+          'isVerified': true,
+          'emailVerified': true,
           'accountType': 'user',
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
@@ -401,16 +525,15 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ============= 🔥 FACEBOOK SIGN IN - ADD THIS ENTIRE METHOD =============
+  // ============= 🔥 FACEBOOK SIGN IN =============
+  // ============= 🔥 FACEBOOK SIGN IN (FIXED) =============
   Future<Map<String, dynamic>> signInWithFacebook() async {
     try {
       debugPrint('\n🔵🔵🔵=== STARTING FACEBOOK SIGN IN ===🔵🔵🔵');
 
-      // Step 1: Trigger Facebook login
       final LoginResult loginResult = await FacebookAuth.instance.login(
         permissions: ['email', 'public_profile'],
       );
-
 
       if (loginResult.status != LoginStatus.success) {
         debugPrint('❌ Facebook login failed or cancelled');
@@ -424,23 +547,23 @@ class AuthProvider extends ChangeNotifier {
 
       debugPrint('✅ Facebook login successful');
 
-      // Step 2: Get user data from Facebook
       final userData = await _facebookAuth.getUserData(
         fields: "email,name,picture",
       );
       debugPrint('📧 Facebook email: ${userData['email']}');
       debugPrint('👤 Facebook name: ${userData['name']}');
 
-      // Step 3: Create Firebase credential
+      // 🔥 FIXED: tokenString → token
       final OAuthCredential credential = FacebookAuthProvider.credential(
-        loginResult.accessToken!.tokenString,
+        loginResult.accessToken!.token,
       );
 
-      // Step 4: Sign in to Firebase
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
       debugPrint('✅ Firebase sign in successful: ${userCredential.user!.uid}');
 
-      // Step 5: Check if user exists in Firestore
+      // Facebook emails are already verified
+      final isVerified = true;
+
       DocumentReference userRef = _firestore.collection('users').doc(userCredential.user!.uid);
       DocumentSnapshot userDoc = await userRef.get();
 
@@ -448,20 +571,17 @@ class AuthProvider extends ChangeNotifier {
       String photoUrl = userData['picture']?['data']?['url'] ?? userCredential.user?.photoURL ?? '';
 
       if (isNewUser) {
-        // Generate unique username from email or name
         String baseUsername = userData['email']?.split('@')[0] ??
             userData['name']?.toLowerCase().replaceAll(' ', '_') ??
             'user';
         String finalUsername = baseUsername.toLowerCase();
 
-        // Check if username exists and add number if needed
         int counter = 1;
         while (await checkUsernameExists(finalUsername)) {
           finalUsername = '${baseUsername.toLowerCase()}$counter';
           counter++;
         }
 
-        // Create new user document
         Map<String, dynamic> userDataMap = {
           'uid': userCredential.user!.uid,
           'name': userData['name'] ?? userCredential.user?.displayName ?? '',
@@ -472,7 +592,8 @@ class AuthProvider extends ChangeNotifier {
           'gender': '',
           'photoURL': photoUrl,
           'isActive': true,
-          'isVerified': true, // Facebook emails are verified
+          'isVerified': true,
+          'emailVerified': true,
           'accountType': 'user',
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
@@ -492,7 +613,6 @@ class AuthProvider extends ChangeNotifier {
         _userData = userDataMap;
         debugPrint('✅ New Facebook user document created with username: $finalUsername');
       } else {
-        // Update existing user
         _userData = userDoc.data() as Map<String, dynamic>;
         await userRef.update({
           'lastLogin': FieldValue.serverTimestamp(),
@@ -500,11 +620,11 @@ class AuthProvider extends ChangeNotifier {
           'lastActiveAt': FieldValue.serverTimestamp(),
           'photoURL': photoUrl.isEmpty ? _userData['photoURL'] : photoUrl,
           'name': userData['name'] ?? _userData['name'],
+          'emailVerified': true,
         });
         debugPrint('✅ Existing Facebook user updated');
       }
 
-      // ===== STEP 6: UPDATE LOCAL STATE =====
       _userId = userCredential.user?.uid ?? '';
       _userEmail = userData['email'] ?? userCredential.user?.email ?? '';
       _userName = userData['name'] ?? userCredential.user?.displayName ?? '';
@@ -512,7 +632,6 @@ class AuthProvider extends ChangeNotifier {
       _isGuest = false;
       _isNewSignUp = isNewUser;
 
-      // ===== STEP 7: SAVE TO SHAREDPREFERENCES =====
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_id', _userId);
       await prefs.setString('user_email', _userEmail);
@@ -536,7 +655,6 @@ class AuthProvider extends ChangeNotifier {
       return {'success': false, 'message': 'An error occurred with Facebook sign in. Please try again.'};
     }
   }
-
   // ============= 🔥 RESET PASSWORD =============
   Future<Map<String, dynamic>> resetPassword(String email) async {
     try {
@@ -595,24 +713,24 @@ class AuthProvider extends ChangeNotifier {
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
       debugPrint('✅ Google sign in successful: ${userCredential.user!.uid}');
 
+      // Google emails are verified
+      final isVerified = userCredential.user!.emailVerified;
+
       DocumentReference userRef = _firestore.collection('users').doc(userCredential.user!.uid);
       DocumentSnapshot userDoc = await userRef.get();
 
       bool isNewUser = !userDoc.exists;
 
       if (isNewUser) {
-        // Generate unique username from email
         String baseUsername = userCredential.user!.email?.split('@')[0] ?? 'user';
         String finalUsername = baseUsername.toLowerCase();
 
-        // Check if username exists and add number if needed
         int counter = 1;
         while (await checkUsernameExists(finalUsername)) {
           finalUsername = '${baseUsername.toLowerCase()}$counter';
           counter++;
         }
 
-        // Create new user document
         Map<String, dynamic> userData = {
           'uid': userCredential.user!.uid,
           'name': userCredential.user!.displayName ?? '',
@@ -623,7 +741,8 @@ class AuthProvider extends ChangeNotifier {
           'gender': '',
           'photoURL': userCredential.user!.photoURL ?? '',
           'isActive': true,
-          'isVerified': userCredential.user!.emailVerified,
+          'isVerified': isVerified,
+          'emailVerified': isVerified,
           'accountType': 'user',
           'createdAt': FieldValue.serverTimestamp(),
           'updatedAt': FieldValue.serverTimestamp(),
@@ -643,13 +762,13 @@ class AuthProvider extends ChangeNotifier {
         _userData = userData;
         debugPrint('✅ New user document created with username: $finalUsername');
       } else {
-        // Update existing user
         _userData = userDoc.data() as Map<String, dynamic>;
         await userRef.update({
           'lastLogin': FieldValue.serverTimestamp(),
           'totalLogins': FieldValue.increment(1),
           'lastActiveAt': FieldValue.serverTimestamp(),
           'photoURL': userCredential.user!.photoURL ?? _userData['photoURL'],
+          'emailVerified': isVerified,
         });
         debugPrint('✅ Existing user updated');
       }
@@ -691,7 +810,7 @@ class AuthProvider extends ChangeNotifier {
 
       await _auth.signOut();
       await _googleSignIn.signOut();
-      await _facebookAuth.logOut(); // ⬅️ YEH ADD KARO
+      await _facebookAuth.logOut();
 
       _isGuest = false;
       _isLoggedIn = false;
@@ -721,7 +840,7 @@ class AuthProvider extends ChangeNotifier {
   Future<Map<String, dynamic>> socialLogin(String platform) async {
     if (platform == 'Google') {
       return await signInWithGoogle();
-    } else if (platform == 'Facebook') { // ⬅️ YEH ADD KARO
+    } else if (platform == 'Facebook') {
       return await signInWithFacebook();
     } else {
       return {'success': false, 'message': '$platform login coming soon!'};
