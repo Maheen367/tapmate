@@ -17,7 +17,40 @@ class _PermissionScreenState extends State<PermissionScreen> {
   bool storagePermission = false;
   bool notificationsPermission = false;
 
-  void _grantPermission(String type) {
+  bool _isLoading = true;
+  bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPermissionsFromFirebase();
+  }
+
+  // 🔥 Firebase se permissions load karo
+  Future<void> _loadPermissionsFromFirebase() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final permissions = await authProvider.loadUserPermissions();
+
+      setState(() {
+        overlayPermission = permissions['overlay'] ?? false;
+        accessibilityPermission = permissions['accessibility'] ?? false;
+        storagePermission = permissions['storage'] ?? false;
+        notificationsPermission = permissions['notifications'] ?? false;
+      });
+
+      debugPrint('✅ Permissions loaded successfully');
+    } catch (e) {
+      debugPrint('❌ Error loading permissions: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // 🔥 Permissions grant karo aur Firebase mein save karo
+  void _grantPermission(String type) async {
     setState(() {
       switch (type) {
         case "Overlay":
@@ -34,17 +67,68 @@ class _PermissionScreenState extends State<PermissionScreen> {
           break;
       }
     });
+
     print("$type Permission Granted!");
+
+    // Firebase mein save karo
+    await _savePermissionsToFirebase();
   }
 
-  void _navigateToHome() {
+  // 🔥 Firebase mein permissions save karo
+  Future<void> _savePermissionsToFirebase() async {
+    setState(() => _isSaving = true);
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      Map<String, bool> permissions = {
+        'overlay': overlayPermission,
+        'accessibility': accessibilityPermission,
+        'storage': storagePermission,
+        'notifications': notificationsPermission,
+      };
+
+      await authProvider.saveUserPermissions(permissions);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Permissions saved successfully!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error saving permissions: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving permissions: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isSaving = false);
+    }
+  }
+
+  // 🔥 Home par navigate karo
+  void _navigateToHome() async {
+    // Pehle permissions save karo
+    await _savePermissionsToFirebase();
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     authProvider.setLoggedIn(true);
     authProvider.setGuestMode(false);
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-    );
+
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    }
   }
 
   @override
@@ -52,7 +136,9 @@ class _PermissionScreenState extends State<PermissionScreen> {
     return Scaffold(
       backgroundColor: AppColors.lightSurface,
       body: SafeArea(
-        child: Column(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
           children: [
             Expanded(
               child: SingleChildScrollView(
@@ -140,7 +226,9 @@ class _PermissionScreenState extends State<PermissionScreen> {
                   SizedBox(
                     width: double.infinity,
                     height: 50,
-                    child: TextButton(
+                    child: _isSaving
+                        ? const Center(child: CircularProgressIndicator())
+                        : TextButton(
                       onPressed: _navigateToHome,
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.zero,
@@ -180,7 +268,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
     );
   }
 
-  // 🔥 CLEAN WHITE ICON BOX TILE
+  // 🔥 CLEAN WHITE ICON BOX TILE (BILKUL SAME)
   Widget _permissionTile({
     required IconData icon,
     required String title,
@@ -269,6 +357,6 @@ class _PermissionScreenState extends State<PermissionScreen> {
           ),
         ],
       ),
-    );}
+    );
+  }
 }
-

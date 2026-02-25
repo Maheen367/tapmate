@@ -1,9 +1,10 @@
-// lib/screens/auth/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:tapmate/Screen/Auth/permissionscreen.dart';
 import 'package:tapmate/Screen/constants/app_colors.dart';
 import 'package:tapmate/Screen/Auth/SignupScreen.dart';
 import 'package:tapmate/Screen/Auth/resetpasswordScreen.dart';
+
 import 'package:tapmate/Screen/home/home_screen.dart';
 import 'package:tapmate/auth_provider.dart';
 
@@ -45,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // 🔥 Login Handler
+  // 🔥 UPDATED Login Handler with Permission Screen Check
   void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -76,10 +77,22 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             );
 
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const HomeScreen()),
-            );
+            // 🔥 Check if permission screen is needed
+            bool needsPermission = await authProvider.needsPermissionScreen();
+
+            if (needsPermission) {
+              // New user - go to permission screen
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const PermissionScreen()),
+              );
+            } else {
+              // Existing user - go to home
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const HomeScreen()),
+              );
+            }
           }
         } else {
           setState(() {
@@ -100,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // 🔥 Google Login Handler
+  // 🔥 Google Login Handler (Updated with Permission Screen)
   Future<void> _handleGoogleLogin() async {
     setState(() {
       _isLoading = true;
@@ -120,10 +133,22 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-          );
+          // 🔥 Check if permission screen is needed for new Google users
+          bool isNewUser = result['isNewUser'] ?? false;
+
+          if (isNewUser) {
+            // New user - go to permission screen
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const PermissionScreen()),
+            );
+          } else {
+            // Existing user - go to home
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const HomeScreen()),
+            );
+          }
         }
       } else {
         setState(() {
@@ -143,7 +168,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // 🔥🔥 NEW: Facebook Login Handler
+  // 🔥 Facebook Login Handler (Updated with Permission Screen)
   Future<void> _handleFacebookLogin() async {
     setState(() {
       _isLoading = true;
@@ -163,10 +188,22 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-          );
+          // 🔥 Check if permission screen is needed for new Facebook users
+          bool isNewUser = result['isNewUser'] ?? false;
+
+          if (isNewUser) {
+            // New user - go to permission screen
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const PermissionScreen()),
+            );
+          } else {
+            // Existing user - go to home
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const HomeScreen()),
+            );
+          }
         }
       } else {
         setState(() {
@@ -186,7 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Guest Login Handler
+  // Guest Login Handler (No permission screen for guest)
   void _handleGuestLogin() {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -472,21 +509,21 @@ class _LoginScreenState extends State<LoginScreen> {
                     _socialButton(
                       icon: Icons.facebook,
                       color: Colors.blue,
-                      onTap: _handleFacebookLogin, // 🔥 NOW WORKING - Facebook login
+                      onTap: _handleFacebookLogin,
                     ),
                     const SizedBox(width: 20),
-                    _socialButton(
-                      icon: Icons.apple,
-                      color: AppColors.textMain,
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Apple login coming soon!"),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
-                      },
-                    ),
+                    // _socialButton(
+                    //   icon: Icons.apple,
+                    //   color: AppColors.textMain,
+                    //   onTap: () {
+                    //     ScaffoldMessenger.of(context).showSnackBar(
+                    //       const SnackBar(
+                    //         content: Text("Apple login coming soon!"),
+                    //         duration: Duration(seconds: 1),
+                    //       ),
+                    //     );
+                    //   },
+                    // ),
                   ],
                 ),
 

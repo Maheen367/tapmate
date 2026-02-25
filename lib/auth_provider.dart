@@ -1,4 +1,3 @@
-// lib/auth_provider.dart
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -525,54 +524,81 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ============= 🔥 FACEBOOK SIGN IN =============
-  // ============= 🔥 FACEBOOK SIGN IN (FIXED) =============
+// ============= 🔥 FACEBOOK SIGN IN WITH DEBUGGING =============
   Future<Map<String, dynamic>> signInWithFacebook() async {
     try {
       debugPrint('\n🔵🔵🔵=== STARTING FACEBOOK SIGN IN ===🔵🔵🔵');
 
+      // Step 1: Try to login with Facebook
+      debugPrint('🟡 Step 1: Attempting Facebook login...');
       final LoginResult loginResult = await FacebookAuth.instance.login(
         permissions: ['email', 'public_profile'],
       );
 
+      debugPrint('📊 Login Result Status: ${loginResult.status}');
+      debugPrint('📊 Access Token: ${loginResult.accessToken != null ? 'Received' : 'Null'}');
+
       if (loginResult.status != LoginStatus.success) {
-        debugPrint('❌ Facebook login failed or cancelled');
-        return {
-          'success': false,
-          'message': loginResult.status == LoginStatus.cancelled
-              ? 'Facebook sign in cancelled'
-              : 'Facebook sign in failed'
-        };
+        debugPrint('❌ Facebook login failed with status: ${loginResult.status}');
+        if (loginResult.status == LoginStatus.cancelled) {
+          debugPrint('👤 User cancelled the login');
+          return {
+            'success': false,
+            'message': 'Facebook sign in cancelled'
+          };
+        } else if (loginResult.status == LoginStatus.failed) {
+          debugPrint('❌ Facebook login failed');
+          return {
+            'success': false,
+            'message': 'Facebook sign in failed'
+          };
+        }
       }
 
-      debugPrint('✅ Facebook login successful');
+      debugPrint('✅ Step 1 complete: Facebook login successful');
 
-      final userData = await _facebookAuth.getUserData(
+      // Step 2: Get user data from Facebook
+      debugPrint('\n🟡 Step 2: Getting Facebook user data...');
+      final userData = await FacebookAuth.instance.getUserData(
         fields: "email,name,picture",
       );
       debugPrint('📧 Facebook email: ${userData['email']}');
       debugPrint('👤 Facebook name: ${userData['name']}');
+      debugPrint('🖼️ Facebook picture: ${userData['picture'] != null ? 'Yes' : 'No'}');
+      debugPrint('✅ Step 2 complete: Got user data');
 
-      // 🔥 FIXED: tokenString → token
+      // Step 3: Create Firebase credential
+      debugPrint('\n🟡 Step 3: Creating Firebase credential...');
+      debugPrint('🔑 Access Token: ${loginResult.accessToken!.token.substring(0, 10)}...'); // Print first 10 chars only
+
       final OAuthCredential credential = FacebookAuthProvider.credential(
         loginResult.accessToken!.token,
       );
+      debugPrint('✅ Step 3 complete: Firebase credential created');
 
+      // Step 4: Sign in to Firebase
+      debugPrint('\n🟡 Step 4: Signing in to Firebase...');
       final UserCredential userCredential = await _auth.signInWithCredential(credential);
-      debugPrint('✅ Firebase sign in successful: ${userCredential.user!.uid}');
+      debugPrint('✅ Firebase sign in successful!');
+      debugPrint('📱 User UID: ${userCredential.user!.uid}');
+      debugPrint('📧 Firebase Email: ${userCredential.user!.email}');
+      debugPrint('👤 Firebase Name: ${userCredential.user!.displayName}');
+      debugPrint('✅ Step 4 complete: Firebase sign in');
 
-      // Facebook emails are already verified
-      final isVerified = true;
+      // Get user data from Facebook
+      final facebookUserData = await FacebookAuth.instance.getUserData(
+        fields: "email,name,picture",
+      );
 
+      // Check if user exists in Firestore
       DocumentReference userRef = _firestore.collection('users').doc(userCredential.user!.uid);
       DocumentSnapshot userDoc = await userRef.get();
 
       bool isNewUser = !userDoc.exists;
-      String photoUrl = userData['picture']?['data']?['url'] ?? userCredential.user?.photoURL ?? '';
 
       if (isNewUser) {
-        String baseUsername = userData['email']?.split('@')[0] ??
-            userData['name']?.toLowerCase().replaceAll(' ', '_') ??
+        String baseUsername = facebookUserData['email']?.split('@')[0] ??
+            facebookUserData['name']?.toLowerCase().replaceAll(' ', '_') ??
             'user';
         String finalUsername = baseUsername.toLowerCase();
 
@@ -582,15 +608,15 @@ class AuthProvider extends ChangeNotifier {
           counter++;
         }
 
-        Map<String, dynamic> userDataMap = {
+        Map<String, dynamic> newUserData = {
           'uid': userCredential.user!.uid,
-          'name': userData['name'] ?? userCredential.user?.displayName ?? '',
-          'email': userData['email'] ?? userCredential.user?.email ?? '',
+          'name': facebookUserData['name'] ?? userCredential.user?.displayName ?? '',
+          'email': facebookUserData['email'] ?? userCredential.user?.email ?? '',
           'username': finalUsername,
           'phone': '',
           'dob': '',
           'gender': '',
-          'photoURL': photoUrl,
+          'photoURL': userCredential.user?.photoURL ?? '',
           'isActive': true,
           'isVerified': true,
           'emailVerified': true,
@@ -608,9 +634,8 @@ class AuthProvider extends ChangeNotifier {
             'marketing': false,
           },
         };
-
-        await userRef.set(userDataMap);
-        _userData = userDataMap;
+        await userRef.set(newUserData);
+        _userData = newUserData;
         debugPrint('✅ New Facebook user document created with username: $finalUsername');
       } else {
         _userData = userDoc.data() as Map<String, dynamic>;
@@ -618,16 +643,14 @@ class AuthProvider extends ChangeNotifier {
           'lastLogin': FieldValue.serverTimestamp(),
           'totalLogins': FieldValue.increment(1),
           'lastActiveAt': FieldValue.serverTimestamp(),
-          'photoURL': photoUrl.isEmpty ? _userData['photoURL'] : photoUrl,
-          'name': userData['name'] ?? _userData['name'],
-          'emailVerified': true,
+          'photoURL': userCredential.user?.photoURL ?? _userData['photoURL'],
         });
         debugPrint('✅ Existing Facebook user updated');
       }
 
       _userId = userCredential.user?.uid ?? '';
-      _userEmail = userData['email'] ?? userCredential.user?.email ?? '';
-      _userName = userData['name'] ?? userCredential.user?.displayName ?? '';
+      _userEmail = facebookUserData['email'] ?? userCredential.user?.email ?? '';
+      _userName = facebookUserData['name'] ?? userCredential.user?.displayName ?? '';
       _isLoggedIn = true;
       _isGuest = false;
       _isNewSignUp = isNewUser;
@@ -649,12 +672,19 @@ class AuthProvider extends ChangeNotifier {
         'isNewUser': isNewUser
       };
 
+    } on FirebaseAuthException catch (e) {
+      debugPrint('\n❌❌❌ FIREBASE AUTH ERROR:');
+      debugPrint('Code: ${e.code}');
+      debugPrint('Message: ${e.message}');
+      return {'success': false, 'message': 'Firebase error: ${e.message}'};
     } catch (e) {
-      debugPrint('❌ Facebook sign in error: $e');
-      debugPrint('📝 Error type: ${e.runtimeType}');
-      return {'success': false, 'message': 'An error occurred with Facebook sign in. Please try again.'};
+      debugPrint('\n❌❌❌ UNEXPECTED ERROR:');
+      debugPrint('Error: $e');
+      debugPrint('Type: ${e.runtimeType}');
+      return {'success': false, 'message': 'Error: $e'};
     }
   }
+
   // ============= 🔥 RESET PASSWORD =============
   Future<Map<String, dynamic>> resetPassword(String email) async {
     try {
@@ -1020,6 +1050,130 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error updating profile: $e');
       return false;
+    }
+  }
+
+  // ============= PERMISSIONS MANAGEMENT =============
+  // Save user permissions to Firestore
+  Future<void> saveUserPermissions(Map<String, bool> permissions) async {
+    try {
+      if (_userId.isEmpty || _userId == 'guest') {
+        debugPrint('⚠️ Cannot save permissions: No user logged in');
+        return;
+      }
+
+      final userRef = _firestore.collection('users').doc(_userId);
+
+      // Permissions object banao
+      Map<String, dynamic> permissionsData = {
+        'overlay': permissions['overlay'] ?? false,
+        'accessibility': permissions['accessibility'] ?? false,
+        'storage': permissions['storage'] ?? false,
+        'notifications': permissions['notifications'] ?? false,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      // User document mein permissions field update karo
+      await userRef.set({
+        'permissions': permissionsData,
+        'permissionsGrantedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      // Local userData bhi update karo
+      if (_userData.isNotEmpty) {
+        _userData['permissions'] = permissionsData;
+      }
+
+      debugPrint('✅ Permissions saved to Firestore: $permissionsData');
+    } catch (e) {
+      debugPrint('❌ Error saving permissions: $e');
+    }
+  }
+
+  // Load user permissions from Firestore
+  Future<Map<String, bool>> loadUserPermissions() async {
+    try {
+      if (_userId.isEmpty || _userId == 'guest') {
+        return {
+          'overlay': false,
+          'accessibility': false,
+          'storage': false,
+          'notifications': false,
+        };
+      }
+
+      final userDoc = await _firestore.collection('users').doc(_userId).get();
+
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>;
+        final permissions = data['permissions'] as Map<String, dynamic>?;
+
+        if (permissions != null) {
+          debugPrint('✅ Permissions loaded from Firestore: $permissions');
+          return {
+            'overlay': permissions['overlay'] ?? false,
+            'accessibility': permissions['accessibility'] ?? false,
+            'storage': permissions['storage'] ?? false,
+            'notifications': permissions['notifications'] ?? false,
+          };
+        }
+      }
+
+      return {
+        'overlay': false,
+        'accessibility': false,
+        'storage': false,
+        'notifications': false,
+      };
+    } catch (e) {
+      debugPrint('❌ Error loading permissions: $e');
+      return {
+        'overlay': false,
+        'accessibility': false,
+        'storage': false,
+        'notifications': false,
+      };
+    }
+  }
+
+  // Check if user needs to see permission screen
+  Future<bool> needsPermissionScreen() async {
+    try {
+      // Guest user ko permission screen nahi dikhani
+      if (_isGuest) {
+        debugPrint('👤 Guest user - No permission screen needed');
+        return false;
+      }
+
+      // Agar user logged in hai to permissions check karo
+      if (_isLoggedIn && _userId.isNotEmpty) {
+        final userDoc = await _firestore.collection('users').doc(_userId).get();
+
+        if (userDoc.exists) {
+          final data = userDoc.data() as Map<String, dynamic>;
+
+          // Check if permissions already exist
+          final permissions = data['permissions'] as Map<String, dynamic>?;
+
+          if (permissions != null) {
+            // Agar permissions already hain to screen mat dikhao
+            debugPrint('✅ Permissions already exist - No permission screen needed');
+            return false;
+          } else {
+            // Naye user ko permission screen dikhao
+            debugPrint('🆕 New user - Permission screen needed');
+            return true;
+          }
+        }
+      }
+
+      // Default case - permission screen dikhao
+      debugPrint('⚠️ Default case - Showing permission screen');
+      return true;
+
+    } catch (e) {
+      debugPrint('❌ Error checking permissions: $e');
+      return true; // Error ki surat mein safe side par raho
     }
   }
 }
