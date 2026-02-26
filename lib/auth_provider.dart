@@ -127,7 +127,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ============= 🔥🔥🔥 UPDATED: SIGN UP WITH EMAIL & PASSWORD =============
+  // ============= 🔥🔥🔥 SIGN UP WITH EMAIL & PASSWORD =============
   Future<Map<String, dynamic>> signUpWithEmailPassword({
     required String name,
     required String email,
@@ -396,7 +396,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ============= 🔥 UPDATED: LOGIN WITH EMAIL & PASSWORD =============
+  // ============= 🔥🔥🔥 UPDATED: LOGIN WITH EMAIL & PASSWORD =============
   Future<Map<String, dynamic>> loginWithEmailPassword(String email, String password) async {
     try {
       debugPrint('\n🟢🟢🟢=== STARTING LOGIN PROCESS ===🟢🟢🟢');
@@ -524,7 +524,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-// ============= 🔥 FACEBOOK SIGN IN WITH DEBUGGING =============
+  // ============= 🔥 FACEBOOK SIGN IN =============
   Future<Map<String, dynamic>> signInWithFacebook() async {
     try {
       debugPrint('\n🔵🔵🔵=== STARTING FACEBOOK SIGN IN ===🔵🔵🔵');
@@ -833,7 +833,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ============= 🔥 LOGOUT =============
+  // ============= 🔥🔥🔥 UPDATED: LOGOUT WITH REMEMBER ME CLEAR =============
   Future<void> logout() async {
     try {
       debugPrint('\n🟠🟠🟠=== LOGGING OUT ===🟠🟠🟠');
@@ -858,11 +858,69 @@ class AuthProvider extends ChangeNotifier {
       await prefs.setString('user_name', '');
       await prefs.setBool('is_new_signup', false);
 
+      // 🔥 IMPORTANT: Remember me flags ko clear mat karo!
+      // Sirf login flags clear karo, saved email waisi hi rahegi
+      // await prefs.remove('saved_email'); // YE MAT KARO - Comment out karo
+
       notifyListeners();
       debugPrint('✅ Logout successful\n');
 
     } catch (e) {
       debugPrint('❌ Logout error: $e');
+    }
+  }
+
+  // ============= 🔥🔥🔥 REMEMBER ME FUNCTIONS (ADD THESE) =============
+
+  /// Save user email for remember me functionality
+  Future<void> saveUserEmail(String email) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('saved_email', email);
+      await prefs.setBool('remember_me', true);
+      debugPrint('✅ Email saved for remember me: $email');
+    } catch (e) {
+      debugPrint('❌ Error saving email: $e');
+    }
+  }
+
+  /// Get saved email for remember me
+  Future<String?> getSavedEmail() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      bool rememberMe = prefs.getBool('remember_me') ?? false;
+      if (rememberMe) {
+        String? email = prefs.getString('saved_email');
+        debugPrint('✅ Retrieved saved email: $email');
+        return email;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('❌ Error getting saved email: $e');
+      return null;
+    }
+  }
+
+  /// Clear saved email (when user unchecks remember me)
+  Future<void> clearSavedEmail() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('saved_email');
+      await prefs.setBool('remember_me', false);
+      debugPrint('✅ Cleared saved email');
+    } catch (e) {
+      debugPrint('❌ Error clearing saved email: $e');
+    }
+  }
+
+  /// Check if remember me is enabled
+  Future<bool> isRememberMeEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool('remember_me') ?? false;
+    } catch (e) {
+      debugPrint('❌ Error checking remember me: $e');
+      return false;
     }
   }
 
@@ -875,22 +933,6 @@ class AuthProvider extends ChangeNotifier {
     } else {
       return {'success': false, 'message': '$platform login coming soon!'};
     }
-  }
-
-  // ============= REMEMBER ME FUNCTIONS =============
-  Future<void> saveUserEmail(String email) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('saved_email', email);
-  }
-
-  Future<String?> getSavedEmail() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('saved_email');
-  }
-
-  Future<void> clearSavedEmail() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('saved_email');
   }
 
   // ============= SET LOGGED IN STATUS =============

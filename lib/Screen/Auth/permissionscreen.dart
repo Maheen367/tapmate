@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // 🔥 ADD THIS IMPORT
 import 'package:tapmate/Screen/constants/app_colors.dart';
 import 'package:tapmate/Screen/home/home_screen.dart';
 import '../../auth_provider.dart';
@@ -114,10 +115,16 @@ class _PermissionScreenState extends State<PermissionScreen> {
     }
   }
 
-  // 🔥 Home par navigate karo
+  // 🔥🔥🔥 UPDATED: Home par navigate karo with flags
   void _navigateToHome() async {
     // Pehle permissions save karo
     await _savePermissionsToFirebase();
+
+    // 🔥🔥🔥 UPDATE FLAGS HERE 🔥🔥🔥
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('permissions_granted', true);
+    await prefs.setBool('isNewUser', false); // Ab user new nahi raha
+    // isLoggedIn flag already true hai login ke time save ho chuka hai
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     authProvider.setLoggedIn(true);
@@ -252,7 +259,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
                   ),
                   const SizedBox(height: 10),
                   GestureDetector(
-                    onTap: _navigateToHome,
+                    onTap: _navigateToHome, // Skip par bhi home par jayega
                     child: const Text(
                       "Skip for Now",
                       style: TextStyle(color: AppColors.textMain, fontSize: 15, fontWeight: FontWeight.bold),
@@ -268,7 +275,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
     );
   }
 
-  // 🔥 CLEAN WHITE ICON BOX TILE (BILKUL SAME)
+  // 🔥 CLEAN WHITE ICON BOX TILE
   Widget _permissionTile({
     required IconData icon,
     required String title,
@@ -281,7 +288,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: granted ? const Color(0xFFF2E5EE) : const Color(0xFFF5F5F5), // light pink-purple if granted
+        color: granted ? const Color(0xFFF2E5EE) : const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(color: AppColors.textMain, blurRadius: 4, offset: const Offset(0, 2)),
@@ -292,14 +299,14 @@ class _PermissionScreenState extends State<PermissionScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.lightSurface, // WHITE BOX
+              color: AppColors.lightSurface,
               borderRadius: BorderRadius.circular(5),
               border: Border.all(color: AppColors.textMain),
             ),
             child: Icon(
               icon,
               size: 26,
-              color: granted ?  AppColors.primary : AppColors.textMain, // pink-purple for granted
+              color: granted ?  AppColors.primary : AppColors.textMain,
             ),
           ),
           const SizedBox(width: 15),
@@ -327,7 +334,7 @@ class _PermissionScreenState extends State<PermissionScreen> {
             ),
           ),
 
-          // BUTTON (BIGGER & PINK-PURPLE)
+          // BUTTON
           SizedBox(
             height: 50,
             width: 120,

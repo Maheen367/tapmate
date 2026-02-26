@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // 🔥 ADD THIS IMPORT
 import 'package:tapmate/Screen/Auth/permissionscreen.dart';
 import 'package:tapmate/Screen/constants/app_colors.dart';
 import 'package:tapmate/Screen/Auth/SignupScreen.dart';
 import 'package:tapmate/Screen/Auth/resetpasswordScreen.dart';
-
 import 'package:tapmate/Screen/home/home_screen.dart';
 import 'package:tapmate/auth_provider.dart';
 
@@ -46,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // 🔥 UPDATED Login Handler with Permission Screen Check
+  // 🔥 UPDATED Login Handler with Flag Save
   void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -63,6 +63,16 @@ class _LoginScreenState extends State<LoginScreen> {
         );
 
         if (result['success'] == true) {
+          // 🔥🔥🔥 SAVE LOGIN FLAG HERE 🔥🔥🔥
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('isLoggedIn', true);
+
+          // Check if user is new (first time login)
+          bool isFirstTimeLogin = result['isFirstTime'] ?? true;
+          if (isFirstTimeLogin) {
+            await prefs.setBool('isNewUser', true);
+          }
+
           if (_rememberMe) {
             await authProvider.saveUserEmail(_emailController.text.trim());
           } else {
@@ -77,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             );
 
-            // 🔥 Check if permission screen is needed
+            // Check if permission screen is needed
             bool needsPermission = await authProvider.needsPermissionScreen();
 
             if (needsPermission) {
@@ -113,7 +123,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // 🔥 Google Login Handler (Updated with Permission Screen)
+  // 🔥 Google Login Handler with Flag Save
   Future<void> _handleGoogleLogin() async {
     setState(() {
       _isLoading = true;
@@ -125,6 +135,10 @@ class _LoginScreenState extends State<LoginScreen> {
       final result = await authProvider.signInWithGoogle();
 
       if (result['success'] == true) {
+        // 🔥🔥🔥 SAVE LOGIN FLAG HERE 🔥🔥🔥
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -133,10 +147,11 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
 
-          // 🔥 Check if permission screen is needed for new Google users
+          // Check if permission screen is needed for new Google users
           bool isNewUser = result['isNewUser'] ?? false;
 
           if (isNewUser) {
+            await prefs.setBool('isNewUser', true);
             // New user - go to permission screen
             Navigator.pushReplacement(
               context,
@@ -168,7 +183,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // 🔥 Facebook Login Handler (Updated with Permission Screen)
+  // 🔥 Facebook Login Handler with Flag Save
   Future<void> _handleFacebookLogin() async {
     setState(() {
       _isLoading = true;
@@ -180,6 +195,10 @@ class _LoginScreenState extends State<LoginScreen> {
       final result = await authProvider.signInWithFacebook();
 
       if (result['success'] == true) {
+        // 🔥🔥🔥 SAVE LOGIN FLAG HERE 🔥🔥🔥
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -188,10 +207,11 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
 
-          // 🔥 Check if permission screen is needed for new Facebook users
+          // Check if permission screen is needed for new Facebook users
           bool isNewUser = result['isNewUser'] ?? false;
 
           if (isNewUser) {
+            await prefs.setBool('isNewUser', true);
             // New user - go to permission screen
             Navigator.pushReplacement(
               context,
@@ -223,7 +243,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Guest Login Handler (No permission screen for guest)
+  // Guest Login Handler
   void _handleGuestLogin() {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);

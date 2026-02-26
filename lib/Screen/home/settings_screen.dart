@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // 🔥 IMPORT ADD KAREN
 import 'package:tapmate/Screen/services/dummy_data_service.dart';
 import 'package:tapmate/theme_provider.dart';
 import 'package:tapmate/utils/guide_manager.dart';
@@ -494,7 +495,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                     const SizedBox(height: 30),
 
-                    // Logout Button
+                    // 🔥🔥🔥 LOGOUT BUTTON (Already Present) 🔥🔥🔥
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
@@ -751,7 +752,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // ========== NEW DIALOG METHODS ==========
+  // ========== DIALOG METHODS ==========
 
   void _showPendingRequestsDialog() {
     final pendingRequests = DummyDataService.pendingFollowRequests;
@@ -1033,8 +1034,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
   }
-
-  // ========== EXISTING DIALOG METHODS ==========
 
   void _showStorageDetails(ThemeData theme) {
     final percentage = (_storageUsed / _storageTotal) * 100;
@@ -1860,6 +1859,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // 🔥🔥🔥 UPDATED LOGOUT DIALOG WITH SHARED PREFERENCES FLAGS 🔥🔥🔥
   void _showLogoutDialog(ThemeData theme) {
     final colorScheme = theme.colorScheme;
 
@@ -1896,10 +1896,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
+
+              // 🔥🔥🔥 CLEAR SHARED PREFERENCES FLAGS 🔥🔥🔥
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setBool('isLoggedIn', false);
+              await prefs.setBool('isNewUser', true); // Reset for next signup
+              // permissions_granted flag ko mat hatayein agar chahti hain ke permissions yaad rahein
+
               final authProvider = Provider.of<AuthProvider>(context, listen: false);
               authProvider.logout();
+
               Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (context) => const LoginScreen()),

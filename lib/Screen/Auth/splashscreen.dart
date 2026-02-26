@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // 🔥 ADD THIS IMPORT
 import 'package:tapmate/Screen/constants/app_colors.dart';
-import 'OnboardingScreen.dart';
+import 'package:tapmate/Screen/Auth/OnboardingScreen.dart';
+import 'package:tapmate/Screen/Auth/permissionscreen.dart';
+import 'package:tapmate/Screen/home/home_screen.dart';
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -12,15 +16,40 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _navigateToOnboarding();
+    _checkUserAndNavigate(); // 🔥 Updated method name
   }
 
-  _navigateToOnboarding() async {
+  // 🔥🔥🔥 NEW METHOD WITH FLAG CHECKS 🔥🔥🔥
+  _checkUserAndNavigate() async {
     await Future.delayed(const Duration(seconds: 3));
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const OnboardingScreen()),
-    );
+
+    // Check flags
+    final prefs = await SharedPreferences.getInstance();
+    bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    bool permissionsGranted = prefs.getBool('permissions_granted') ?? false;
+    bool isNewUser = prefs.getBool('isNewUser') ?? true;
+
+    if (!isLoggedIn) {
+      // User not logged in - go to Onboarding
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const OnboardingScreen()),
+      );
+    }
+    else if (isLoggedIn && !permissionsGranted && isNewUser) {
+      // Logged in but permissions not granted and is new user - go to Permission Screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const PermissionScreen()),
+      );
+    }
+    else {
+      // All good - go to Home
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    }
   }
 
   @override
@@ -100,4 +129,3 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
-
