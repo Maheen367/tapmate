@@ -157,6 +157,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
     }
   }
 
+  // user_profile_screen.dart mein yeh method replace karo
+
   Future<void> _loadUserPosts(String userId) async {
     try {
       QuerySnapshot postsSnapshot = await _firestore
@@ -168,14 +170,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
 
       setState(() {
         _posts = postsSnapshot.docs.map((doc) {
-          Map<String, dynamic> data = doc.data() as Map<String, dynamic>? ?? {};
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
           return {
             'id': doc.id,
             'userId': data['userId'] ?? '',
-            'title': data['title'] ?? '',
-            'thumbnail': data['thumbnail'] ?? '',
+            'caption': data['caption'] ?? '',
+            'thumbnail': data['thumbnailUrl'] ?? '',
+            'videoUrl': data['videoUrl'],
             'likes': data['likes'] ?? 0,
             'comments': data['comments'] ?? 0,
+            'isVideo': data['isVideo'] ?? false,
             'createdAt': data['createdAt'],
           };
         }).toList();

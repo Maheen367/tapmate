@@ -1,10 +1,11 @@
-// lib/Screen/home/other_user_profile_screen.dart (UPDATED VERSION)
+// lib/Screen/home/other_user_profile_screen.dart (FIXED VERSION)
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:tapmate/Screen/home/chat_screen.dart';
 import 'package:tapmate/Screen/services/chat_service.dart';
 import 'package:tapmate/Screen/constants/app_colors.dart';
+import 'package:tapmate/Screen/services/follow_service.dart';
 
 class OtherUserProfileScreen extends StatefulWidget {
   final String userId;
@@ -34,6 +35,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
 
   // Services
   final ChatService _chatService = ChatService();
+  final FollowService _followService = FollowService(); // 👈 YAHAN INITIALIZE KARO
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
@@ -56,6 +58,9 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
       if (userDoc.exists) {
         Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
 
+        // Check if current user is following this user
+        bool isFollowing = await _followService.isFollowing(widget.userId);
+
         setState(() {
           _userData = {
             'id': widget.userId,
@@ -64,14 +69,13 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
             'avatar': data['avatar'] ?? data['profilePic'] ?? widget.userAvatar,
             'profilePic': data['profilePic'] ?? '',
             'bio': data['bio'] ?? 'No bio available',
-            'posts_count': data['postsCount'] ?? 0,
-            'followers_count': data['followersCount'] ?? 0,
-            'following_count': data['followingCount'] ?? 0,
-            'is_following': data['isFollowing'] ?? false,
-            'is_private': data['isPrivate'] ?? false,
+            'posts_count': data['posts_count'] ?? data['postsCount'] ?? 0,
+            'followers_count': data['followers_count'] ?? data['followersCount'] ?? 0,
+            'following_count': data['following_count'] ?? data['followingCount'] ?? 0,
+            'is_private': data['is_private'] ?? data['isPrivate'] ?? false,
           };
 
-          _isFollowing = _userData['is_following'];
+          _isFollowing = isFollowing;
         });
 
         // Load user posts
@@ -79,6 +83,12 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
       }
     } catch (e) {
       print('Error loading user data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading profile: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       setState(() => _isLoading = false);
     }
@@ -98,9 +108,9 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
           Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
           return {
             'id': doc.id,
-            'thumbnail_url': data['thumbnailUrl'] ?? '',
+            'thumbnail_url': data['thumbnailUrl'] ?? data['thumbnail_url'] ?? '',
             'likes_count': data['likes'] ?? 0,
-            'is_video': data['isVideo'] ?? false,
+            'is_video': data['isVideo'] ?? data['is_video'] ?? false,
           };
         }).toList();
       });
@@ -110,27 +120,39 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
   }
 
   Future<void> _toggleFollow() async {
-    setState(() {
-      _isFollowing = !_isFollowing;
-      if (_isFollowing) {
-        _userData['followers_count'] = (_userData['followers_count'] ?? 0) + 1;
-      } else {
-        _userData['followers_count'] = (_userData['followers_count'] ?? 0) - 1;
-      }
-    });
+    setState(() => _isLoading = true);
 
     try {
-      // Update follow status in Firestore
-      await _firestore.collection('users').doc(widget.userId).update({
-        'followersCount': _userData['followers_count'],
-        'isFollowing': _isFollowing,
-      });
-    } catch (e) {
-      print('Error updating follow: $e');
-      // Revert on error
+      if (_isFollowing) {
+        await _followService.unfollowUser(widget.userId);
+      } else {
+        await _followService.followUser(widget.userId);
+      }
+
       setState(() {
         _isFollowing = !_isFollowing;
+        if (_isFollowing) {
+          _userData['followers_count'] = (_userData['followers_count'] ?? 0) + 1;
+        } else {
+          _userData['followers_count'] = (_userData['followers_count'] ?? 0) - 1;
+        }
       });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isFollowing ? 'Following' : 'Unfollowed'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 

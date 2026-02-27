@@ -1,14 +1,18 @@
-import 'package:flutter/material.dart';
-import 'package:tapmate/Screen/constants/app_colors.dart';
-// Theme Colors
+// lib/Screen/home/comments_screen.dart
 
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:tapmate/Screen/constants/app_colors.dart';
 
 class CommentsScreen extends StatefulWidget {
+  final String postId;  // Changed from contentTitle
   final String contentTitle;
   final int initialCommentCount;
 
   const CommentsScreen({
     super.key,
+    required this.postId,  // Add this
     required this.contentTitle,
     required this.initialCommentCount,
   });
@@ -19,29 +23,193 @@ class CommentsScreen extends StatefulWidget {
 
 class _CommentsScreenState extends State<CommentsScreen> {
   final TextEditingController _commentController = TextEditingController();
-  final List<Map<String, dynamic>> _comments = [
-    {
-      'user': 'Alice Johnson',
-      'avatar': '👩',
-      'comment': 'This is amazing! Great work!',
-      'time': '2h ago',
-      'likes': 45,
-    },
-    {
-      'user': 'Bob Smith',
-      'avatar': '🧑',
-      'comment': 'Love this content! Keep it up!',
-      'time': '5h ago',
-      'likes': 32,
-    },
-    {
-      'user': 'Charlie Brown',
-      'avatar': '👤',
-      'comment': 'Can you make more videos like this?',
-      'time': '1d ago',
-      'likes': 28,
-    },
-  ];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  List<Map<String, dynamic>> _comments = [];
+  bool _isLoading = true;
+  int _commentCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadComments();
+  }
+
+  Future<void> _loadComments() async {
+    setState(() => _isLoading = true);
+
+    try {
+      QuerySnapshot commentsSnapshot = await _firestore
+          .collection('posts')
+          .doc(widget.postId)
+          .collection('comments')
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      List<Map<String, dynamic>> loadedComments = [];
+
+      for (var doc in commentsSnapshot.docs) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+
+        // Get user info for each comment
+        DocumentSnapshot userDoc = await _firestore
+            .collection('users')
+            .doc(data['userId'])
+            .get();
+
+        Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>? ?? {};
+
+        loadedComments.add({
+          'id': doc.id,
+          'userId': data['userId'],
+          'user': userData['name'] ?? 'Unknown User',
+          'avatar': userData['avatar'] ?? '👤',
+          'profilePic': userData['profile_pic'] ?? '',
+          'comment': data['comment'],
+          'time': _formatTime(data['createdAt']),
+          'likes': data['likes'] ?? 0,
+          'isLiked': false, // You can implement like functionality later
+        });
+      }
+
+      setState(() {
+        _comments = loadedComments;
+        _commentCount = _comments.length;
+        _isLoading = false;
+      });
+
+      // Update comment count in post
+      await _firestore.collection('posts').doc(widget.postId).update({
+        'comments': _commentCount,
+      });
+
+    } catch (e) {
+      print('Error loading comments: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _addComment() async {
+    if (_commentController.text.trim().isEmpty) return;
+
+    String commentText = _commentController.text.trim();
+    String? userId = _auth.currentUser?.uid;
+
+    if (userId == null) return;
+
+    try {
+      // Get current user info
+      DocumentSnapshot userDoc = await _firestore
+          .collection('users')
+          .doc(userId)
+          .get();
+
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>? ?? {};
+
+      // Add comment to Firestore
+      await _firestore
+          .collection('posts')
+          .doc(widget.postId)
+          .collection('comments')
+          .add({
+        'userId': userId,
+        'comment': commentText,
+        'createdAt': FieldValue.serverTimestamp(),
+        'likes': 0,
+      });
+
+      _commentController.clear();
+
+      // Reload comments
+      await _loadComments();
+
+    } catch (e) {
+      print('Error adding comment: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to add comment: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _toggleLike(String commentId, int currentLikes, bool isLiked) async {
+    String? userId = _auth.currentUser?.uid;
+    if (userId == null) return;
+
+    try {
+      if (isLiked) {
+        // Unlike
+        await _firestore
+            .collection('posts')
+            .doc(widget.postId)
+            .collection('comments')
+            .doc(commentId)
+            .collection('likes')
+            .doc(userId)
+            .delete();
+
+        await _firestore
+            .collection('posts')
+            .doc(widget.postId)
+            .collection('comments')
+            .doc(commentId)
+            .update({
+          'likes': FieldValue.increment(-1),
+        });
+      } else {
+        // Like
+        await _firestore
+            .collection('posts')
+            .doc(widget.postId)
+            .collection('comments')
+            .doc(commentId)
+            .collection('likes')
+            .doc(userId)
+            .set({
+          'userId': userId,
+          'likedAt': FieldValue.serverTimestamp(),
+        });
+
+        await _firestore
+            .collection('posts')
+            .doc(widget.postId)
+            .collection('comments')
+            .doc(commentId)
+            .update({
+          'likes': FieldValue.increment(1),
+        });
+      }
+
+      // Reload comments to update UI
+      await _loadComments();
+
+    } catch (e) {
+      print('Error toggling like: $e');
+    }
+  }
+
+  String _formatTime(dynamic timestamp) {
+    if (timestamp == null) return 'Just now';
+    if (timestamp is Timestamp) {
+      DateTime date = timestamp.toDate();
+      DateTime now = DateTime.now();
+
+      if (date.day == now.day && date.month == now.month && date.year == now.year) {
+        // Today - show time
+        return '${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+      } else if (date.day == now.day - 1 && date.month == now.month && date.year == now.year) {
+        // Yesterday
+        return 'Yesterday';
+      } else {
+        // Other days
+        return '${date.day}/${date.month}';
+      }
+    }
+    return 'Just now';
+  }
 
   @override
   void dispose() {
@@ -51,6 +219,8 @@ class _CommentsScreenState extends State<CommentsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    String? currentUserId = _auth.currentUser?.uid;
+
     return Scaffold(
       backgroundColor: AppColors.lightSurface,
       body: SafeArea(
@@ -90,7 +260,7 @@ class _CommentsScreenState extends State<CommentsScreen> {
                           ),
                         ),
                         Text(
-                          '${_comments.length} comments',
+                          '$_commentCount comments',
                           style: TextStyle(
                             color: AppColors.lightSurface.withOpacity(0.9),
                             fontSize: 12,
@@ -105,11 +275,42 @@ class _CommentsScreenState extends State<CommentsScreen> {
 
             // Comments List
             Expanded(
-              child: ListView.builder(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _comments.isEmpty
+                  ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.comment_outlined,
+                      size: 80,
+                      color: Colors.grey[400],
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'No comments yet',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Be the first to comment!',
+                      style: TextStyle(
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
+              )
+                  : ListView.builder(
                 padding: const EdgeInsets.all(20),
                 itemCount: _comments.length,
                 itemBuilder: (context, index) {
-                  return _buildCommentItem(_comments[index]);
+                  return _buildCommentItem(_comments[index], currentUserId);
                 },
               ),
             ),
@@ -148,25 +349,15 @@ class _CommentsScreenState extends State<CommentsScreen> {
                         fillColor: Colors.grey[50],
                         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                       ),
+                      maxLines: null,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _addComment(),
                     ),
                   ),
                   const SizedBox(width: 10),
                   IconButton(
                     icon: const Icon(Icons.send, color: AppColors.primary),
-                    onPressed: () {
-                      if (_commentController.text.isNotEmpty) {
-                        setState(() {
-                          _comments.insert(0, {
-                            'user': 'You',
-                            'avatar': '👤',
-                            'comment': _commentController.text,
-                            'time': 'now',
-                            'likes': 0,
-                          });
-                        });
-                        _commentController.clear();
-                      }
-                    },
+                    onPressed: _addComment,
                   ),
                 ],
               ),
@@ -177,21 +368,32 @@ class _CommentsScreenState extends State<CommentsScreen> {
     );
   }
 
-  Widget _buildCommentItem(Map<String, dynamic> comment) {
+  Widget _buildCommentItem(Map<String, dynamic> comment, String? currentUserId) {
+    bool isLiked = comment['isLiked'] ?? false;
+    bool isMyComment = comment['userId'] == currentUserId;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Avatar
           CircleAvatar(
             radius: 20,
             backgroundColor: AppColors.primary.withOpacity(0.2),
-            child: Text(
+            backgroundImage: comment['profilePic'] != null && comment['profilePic'].isNotEmpty
+                ? NetworkImage(comment['profilePic'])
+                : null,
+            child: comment['profilePic'] == null || comment['profilePic'].isEmpty
+                ? Text(
               comment['avatar'] as String,
               style: const TextStyle(fontSize: 18),
-            ),
+            )
+                : null,
           ),
           const SizedBox(width: 12),
+
+          // Comment content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,11 +429,20 @@ class _CommentsScreenState extends State<CommentsScreen> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
+                    // Like button
                     GestureDetector(
-                      onTap: () {},
+                      onTap: () => _toggleLike(
+                        comment['id'],
+                        comment['likes'],
+                        isLiked,
+                      ),
                       child: Row(
                         children: [
-                          Icon(Icons.favorite_border, size: 16, color: Colors.grey[600]),
+                          Icon(
+                            isLiked ? Icons.favorite : Icons.favorite_border,
+                            size: 16,
+                            color: isLiked ? Colors.red : Colors.grey[600],
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             comment['likes'].toString(),
@@ -244,17 +455,23 @@ class _CommentsScreenState extends State<CommentsScreen> {
                       ),
                     ),
                     const SizedBox(width: 15),
-                    GestureDetector(
-                      onTap: () {},
-                      child: Text(
-                        'Reply',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                          fontWeight: FontWeight.w500,
+
+                    // Reply button (optional)
+                    if (!isMyComment)
+                      GestureDetector(
+                        onTap: () {
+                          _commentController.text = '@${comment['user']} ';
+                          FocusScope.of(context).requestFocus(FocusNode());
+                        },
+                        child: Text(
+                          'Reply',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ],
@@ -265,17 +482,3 @@ class _CommentsScreenState extends State<CommentsScreen> {
     );
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
