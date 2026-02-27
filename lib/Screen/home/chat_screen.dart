@@ -1,5 +1,3 @@
-// lib/Screen/home/chat_screen.dart (ORIGINAL + DIRECT CHAT FIX)
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -10,9 +8,10 @@ import 'package:tapmate/Screen/services/chat_service.dart';
 import '../../auth_provider.dart';
 import '../../theme_provider.dart';
 import 'package:tapmate/Screen/constants/app_colors.dart';
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
+
 
 class ChatScreen extends StatefulWidget {
-  // 👇 ONLY THESE 4 LINES ADDED - for direct chat
   final String? initialChatId;
   final String? initialUserId;
   final String? initialUserName;
@@ -20,17 +19,18 @@ class ChatScreen extends StatefulWidget {
 
   const ChatScreen({
     super.key,
-    this.initialChatId,      // 👈 NEW
-    this.initialUserId,      // 👈 NEW
-    this.initialUserName,    // 👈 NEW
-    this.initialUserAvatar,  // 👈 NEW
+    this.initialChatId,
+    this.initialUserId,
+    this.initialUserName,
+    this.initialUserAvatar,
   });
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateMixin {
+class _ChatScreenState extends State<ChatScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _messageController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -44,14 +44,18 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   List<Map<String, dynamic>> _chatUsers = [];
   bool _isLoading = true;
 
+  bool _isEmojiPickerVisible = false;
+  final FocusNode _messageFocusNode = FocusNode();
+
+  // For calls tab
+  int _missedCallsCount = 0;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
 
-    // 👇 NEW - Check if we have initial chat data
     if (widget.initialChatId != null && widget.initialUserId != null) {
-      // Directly open chat with this user
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _openChatWithUser(
           widget.initialChatId!,
@@ -63,10 +67,29 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     } else {
       _initializeChat();
     }
+
+    _messageFocusNode.addListener(() {
+      if (_messageFocusNode.hasFocus) {
+        setState(() {
+          _isEmojiPickerVisible = false;
+        });
+      }
+    });
+
+    // Listen to missed calls
+    _chatService.getUnreadMissedCallsCount().listen((count) {
+      setState(() {
+        _missedCallsCount = count;
+      });
+    });
   }
 
-  // 👇 NEW METHOD - to open chat directly
-  void _openChatWithUser(String chatId, String userId, String userName, String userAvatar) {
+  void _openChatWithUser(
+      String chatId,
+      String userId,
+      String userName,
+      String userAvatar,
+      ) {
     setState(() {
       _currentChatId = chatId;
       _currentUserId = userId;
@@ -80,10 +103,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       _isLoading = false;
     });
 
-    // Mark messages as read
     _chatService.markMessagesAsRead(chatId);
 
-    // Auto-scroll to bottom
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
     });
@@ -95,14 +116,13 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     _searchController.dispose();
     _scrollController.dispose();
     _tabController.dispose();
+    _messageFocusNode.dispose();
 
-    // Update offline status
     _chatService.updateOnlineStatus(false);
     super.dispose();
   }
 
   Future<void> _initializeChat() async {
-    // Update online status
     await _chatService.updateOnlineStatus(true);
     setState(() => _isLoading = false);
   }
@@ -114,10 +134,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       _currentChatUser = user;
     });
 
-    // Mark messages as read
     _chatService.markMessagesAsRead(_currentChatId);
 
-    // Auto-scroll to bottom
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
     });
@@ -128,6 +146,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       _currentChatId = "";
       _currentUserId = "";
       _currentChatUser = {};
+      _isEmojiPickerVisible = false;
     });
   }
 
@@ -140,12 +159,14 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       _messageController.clear();
       _scrollToBottom();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to send message: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send message: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -157,6 +178,33 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         curve: Curves.easeOut,
       );
     }
+  }
+
+  void _toggleEmojiPicker() {
+    setState(() {
+      _isEmojiPickerVisible = !_isEmojiPickerVisible;
+    });
+    if (_isEmojiPickerVisible) {
+      SystemChannels.textInput.invokeMethod('TextInput.hide');
+      _messageFocusNode.unfocus();
+    } else {
+      FocusScope.of(context).requestFocus(_messageFocusNode);
+    }
+  }
+
+  void _onEmojiSelected(Emoji emoji) {
+    setState(() {
+      _messageController.text = _messageController.text + emoji.emoji;
+    });
+  }
+
+  void _onBackspacePressed() {
+    setState(() {
+      String text = _messageController.text;
+      if (text.isNotEmpty) {
+        _messageController.text = text.substring(0, text.length - 1);
+      }
+    });
   }
 
   void _deleteMessage(String messageId) {
@@ -175,23 +223,30 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
               Navigator.pop(context);
               try {
                 await _chatService.deleteMessage(_currentChatId, messageId);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Message deleted'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Message deleted'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
               } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Failed to delete message: $e'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to delete message: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete', style: TextStyle(color: AppColors.lightSurface)),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: AppColors.lightSurface),
+            ),
           ),
         ],
       ),
@@ -200,12 +255,14 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
   void _copyMessage(String message) {
     Clipboard.setData(ClipboardData(text: message));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Message copied to clipboard'),
-        backgroundColor: Colors.green,
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Message copied to clipboard'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
 
   void _forwardMessage(Map<String, dynamic> message) {
@@ -246,32 +303,45 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                       return ListTile(
                         leading: CircleAvatar(
                           backgroundColor: AppColors.primary.withOpacity(0.2),
-                          child: Text(
+                          backgroundImage: user['profilePic'] != null
+                              ? NetworkImage(user['profilePic'])
+                              : null,
+                          child: user['profilePic'] == null
+                              ? Text(
                             user['avatar'] ?? '👤',
                             style: const TextStyle(fontSize: 20),
-                          ),
+                          )
+                              : null,
                         ),
-                        title: Text(user['name']),
-                        subtitle: Text('@${user['username']}'),
+                        title: Text(user['name'] ?? 'Unknown'),
+                        subtitle: Text('@${user['username'] ?? 'username'}'),
                         onTap: () async {
                           Navigator.pop(context);
                           try {
-                            // Create new chat with selected user
-                            String newChatId = await _chatService.createChat(user['userId']);
-                            await _chatService.sendMessage(newChatId, message['message']);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Message forwarded to ${user['name']}'),
-                                backgroundColor: Colors.green,
-                              ),
+                            await _chatService.forwardMessage(
+                              _currentChatId,
+                              message['id'],
+                              user['userId'],
                             );
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Message forwarded to ${user['name']}',
+                                  ),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
                           } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Failed to forward message'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Failed to forward message: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
                           }
                         },
                       );
@@ -299,41 +369,66 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     );
   }
 
-  void _startVideoCall() {
+  void _startVideoCall() async {
+    await _chatService.logCall(
+      otherUserId: _currentUserId,
+      callType: 'video',
+      callStatus: 'completed',
+      duration: 120,
+    );
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => VideoCallScreen(
-          userName: _currentChatUser['name'],
+          userName: _currentChatUser['name'] ?? 'User',
           userAvatar: _currentChatUser['avatar'] ?? '👤',
         ),
       ),
     );
   }
 
-  void _startVoiceCall() {
+  void _startVoiceCall() async {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Voice Call'),
-        content: Text('Calling ${_currentChatUser['name']}...'),
+        content: Text('Calling ${_currentChatUser['name'] ?? 'User'}...'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              _chatService.logCall(
+                otherUserId: _currentUserId,
+                callType: 'voice',
+                callStatus: 'missed',
+              );
+              Navigator.pop(context);
+            },
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Connected to ${_currentChatUser['name']}'),
-                  backgroundColor: Colors.green,
-                ),
+              _chatService.logCall(
+                otherUserId: _currentUserId,
+                callType: 'voice',
+                callStatus: 'completed',
+                duration: 180,
               );
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Connected to ${_currentChatUser['name'] ?? 'User'}'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: const Text('Answer', style: TextStyle(color: AppColors.lightSurface)),
+            child: const Text(
+              'Answer',
+              style: TextStyle(color: AppColors.lightSurface),
+            ),
           ),
         ],
       ),
@@ -370,7 +465,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             const Divider(),
             ListTile(
               leading: Icon(Icons.block, color: Colors.red, size: 28),
-              title: const Text('Block User', style: TextStyle(fontSize: 16, color: Colors.red)),
+              title: const Text(
+                'Block User',
+                style: TextStyle(fontSize: 16, color: Colors.red),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _blockUser();
@@ -385,13 +483,18 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
               },
             ),
             ListTile(
-              leading: Icon(Icons.notifications_off, color: AppColors.primary, size: 28),
-              title: const Text('Mute Notifications', style: TextStyle(fontSize: 16)),
+              leading: Icon(
+                Icons.notifications_off,
+                color: AppColors.primary,
+                size: 28,
+              ),
+              title: const Text(
+                'Mute Notifications',
+                style: TextStyle(fontSize: 16),
+              ),
               onTap: () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Notifications muted')),
-                );
+                _muteNotifications();
               },
             ),
           ],
@@ -405,25 +508,44 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Block User'),
-        content: Text('Are you sure you want to block ${_currentChatUser['name']}?'),
+        content: Text(
+          'Are you sure you want to block ${_currentChatUser['name'] ?? 'this user'}?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${_currentChatUser['name']} has been blocked'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-              _goBackToChatList();
+              try {
+                await _chatService.blockUser(_currentUserId);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${_currentChatUser['name'] ?? 'User'} has been blocked'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+                _goBackToChatList();
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to block user: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Block', style: TextStyle(color: AppColors.lightSurface)),
+            child: const Text(
+              'Block',
+              style: TextStyle(color: AppColors.lightSurface),
+            ),
           ),
         ],
       ),
@@ -431,28 +553,130 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   }
 
   void _reportUser() {
+    String? selectedReason;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Report User'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Please select a reason for reporting this user:'),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: selectedReason,
+                hint: const Text('Select reason'),
+                items: const [
+                  DropdownMenuItem(value: 'spam', child: Text('Spam')),
+                  DropdownMenuItem(value: 'harassment', child: Text('Harassment')),
+                  DropdownMenuItem(value: 'inappropriate', child: Text('Inappropriate content')),
+                  DropdownMenuItem(value: 'fake', child: Text('Fake account')),
+                  DropdownMenuItem(value: 'other', child: Text('Other')),
+                ],
+                onChanged: (value) {
+                  setState(() => selectedReason = value);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (selectedReason == null) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Please select a reason'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  }
+                  return;
+                }
+
+                Navigator.pop(context);
+                try {
+                  await _chatService.reportUser(
+                    _currentUserId,
+                    reason: selectedReason,
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Report submitted successfully'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to submit report: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text(
+                'Submit Report',
+                style: TextStyle(color: AppColors.lightSurface),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _muteNotifications() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Report User'),
-        content: const Text('Please select a reason for reporting this user.'),
+        title: const Text('Mute Notifications'),
+        content: const Text('Mute notifications for this chat for 7 days?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Report submitted successfully'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+              try {
+                await _chatService.muteChat(_currentChatId, mute: true);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Notifications muted for 7 days'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to mute notifications: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Submit Report', style: TextStyle(color: AppColors.lightSurface)),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text(
+              'Mute',
+              style: TextStyle(color: AppColors.lightSurface),
+            ),
           ),
         ],
       ),
@@ -464,32 +688,198 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Clear Conversation'),
-        content: const Text('Are you sure you want to clear all messages in this conversation?'),
+        content: const Text(
+          'Are you sure you want to clear all messages in this conversation?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // Implement clear conversation logic
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Conversation cleared'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+              try {
+                await _chatService.clearConversation(_currentChatId);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Conversation cleared'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to clear conversation: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Clear', style: TextStyle(color: AppColors.lightSurface)),
+            child: const Text(
+              'Clear',
+              style: TextStyle(color: AppColors.lightSurface),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, bool isActive, BuildContext context, bool isDarkMode) {
+  // ==================== REQUEST HANDLERS ====================
+
+  void _acceptRequest(String requestId, String senderId) async {
+    try {
+      await _chatService.acceptFriendRequest(requestId, senderId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Friend request accepted'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to accept request: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _rejectRequest(String requestId) async {
+    try {
+      await _chatService.rejectFriendRequest(requestId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Friend request rejected'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to reject request: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _sendFriendRequest(String userId) async {
+    try {
+      await _chatService.sendFriendRequest(userId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Friend request sent'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send request: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // ==================== CALL HANDLERS ====================
+
+  void _markMissedCallsAsRead() async {
+    await _chatService.markMissedCallsAsRead();
+    setState(() {
+      _missedCallsCount = 0;
+    });
+  }
+
+  void _callUser(String userId, String userName, String callType) async {
+    if (callType == 'video') {
+      await _chatService.logCall(
+        otherUserId: userId,
+        callType: 'video',
+        callStatus: 'completed',
+        duration: 120,
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => VideoCallScreen(
+            userName: userName,
+            userAvatar: '👤',
+          ),
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Voice Call'),
+          content: Text('Calling $userName...'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _chatService.logCall(
+                  otherUserId: userId,
+                  callType: 'voice',
+                  callStatus: 'missed',
+                );
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _chatService.logCall(
+                  otherUserId: userId,
+                  callType: 'voice',
+                  callStatus: 'completed',
+                  duration: 180,
+                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Connected to $userName'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              child: const Text('Answer'),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildNavItem(
+      IconData icon,
+      String label,
+      bool isActive,
+      BuildContext context,
+      bool isDarkMode,
+      ) {
     return GestureDetector(
       onTap: () {
         if (label == 'Home') {
@@ -509,7 +899,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         children: [
           Icon(
             icon,
-            color: isActive ? AppColors.primary : (isDarkMode ? Colors.grey[600]! : Colors.grey),
+            color: isActive
+                ? AppColors.primary
+                : (isDarkMode ? Colors.grey[600]! : Colors.grey),
             size: 24,
           ),
           const SizedBox(height: 4),
@@ -517,7 +909,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             label,
             style: TextStyle(
               fontSize: 12,
-              color: isActive ? AppColors.primary : (isDarkMode ? Colors.grey[600]! : Colors.grey),
+              color: isActive
+                  ? AppColors.primary
+                  : (isDarkMode ? Colors.grey[600]! : Colors.grey),
               fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -537,74 +931,139 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       return _buildGuestView(isDarkMode);
     }
 
-    return Scaffold(
-      backgroundColor: isDarkMode ? const Color(0xFF121212) : AppColors.lightSurface,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // HEADER
-            _buildHeader(isDarkMode),
-
-            // TABS (when in chat list)
-            if (_currentChatId.isEmpty)
-              Container(
-                decoration: BoxDecoration(
-                  color: isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightSurface,
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey.withOpacity(0.1)),
-                  ),
-                ),
-                child: TabBar(
-                  controller: _tabController,
-                  labelColor: AppColors.primary,
-                  unselectedLabelColor: isDarkMode ? Colors.grey[400]! : Colors.grey,
-                  indicatorColor: AppColors.primary,
-                  tabs: const [
-                    Tab(text: 'Chats'),
-                    Tab(text: 'Requests'),
-                    Tab(text: 'Calls'),
-                  ],
-                ),
-              ),
-
-            // BODY
-            Expanded(
-              child: _currentChatId.isEmpty
-                  ? _buildChatListView(isDarkMode)
-                  : _buildChatDetailView(isDarkMode),
-            ),
-
-            // BOTTOM NAVIGATION
-            SafeArea(
-              top: false,
-              child: Container(
-                height: 70,
-                decoration: BoxDecoration(
-                  color: isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightSurface,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, -2),
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        backgroundColor: isDarkMode
+            ? const Color(0xFF121212)
+            : AppColors.lightSurface,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(isDarkMode),
+              if (_currentChatId.isEmpty)
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDarkMode
+                        ? const Color(0xFF1E1E1E)
+                        : AppColors.lightSurface,
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey.withOpacity(0.1)),
                     ),
-                  ],
-                  border: Border.all(
-                    color: Colors.grey.withOpacity(0.1),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    labelColor: AppColors.primary,
+                    unselectedLabelColor: isDarkMode
+                        ? Colors.grey[400]!
+                        : Colors.grey,
+                    indicatorColor: AppColors.primary,
+                    tabs: [
+                      const Tab(text: 'Chats'),
+                      const Tab(text: 'Requests'),
+                      Tab(
+                        child: Stack(
+                          children: [
+                            const Text('Calls'),
+                            if (_missedCallsCount > 0)
+                              Positioned(
+                                right: -8,
+                                top: -8,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Text(
+                                    _missedCallsCount.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+              Expanded(
+                child: _currentChatId.isEmpty
+                    ? TabBarView(
+                  controller: _tabController,
                   children: [
-                    _buildNavItem(Icons.home_rounded, 'Home', false, context, isDarkMode),
-                    _buildNavItem(Icons.explore_rounded, 'Discover', false, context, isDarkMode),
-                    _buildNavItem(Icons.feed_rounded, 'Feed', false, context, isDarkMode),
-                    _buildNavItem(Icons.message_rounded, 'Message', true, context, isDarkMode),
-                    _buildNavItem(Icons.person_rounded, 'Profile', false, context, isDarkMode),
+                    _buildChatsTab(isDarkMode),
+                    _buildRequestsTab(isDarkMode),
+                    _buildCallsTab(isDarkMode),
                   ],
-                ),
+                )
+                    : _buildChatDetailView(isDarkMode),
               ),
-            ),
-          ],
+              if (_currentChatId.isEmpty)
+                SafeArea(
+                  top: false,
+                  child: Container(
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: isDarkMode
+                          ? const Color(0xFF1E1E1E)
+                          : AppColors.lightSurface,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, -2),
+                        ),
+                      ],
+                      border: Border.all(color: Colors.grey.withOpacity(0.1)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildNavItem(
+                          Icons.home_rounded,
+                          'Home',
+                          false,
+                          context,
+                          isDarkMode,
+                        ),
+                        _buildNavItem(
+                          Icons.explore_rounded,
+                          'Discover',
+                          false,
+                          context,
+                          isDarkMode,
+                        ),
+                        _buildNavItem(
+                          Icons.feed_rounded,
+                          'Feed',
+                          false,
+                          context,
+                          isDarkMode,
+                        ),
+                        _buildNavItem(
+                          Icons.message_rounded,
+                          'Message',
+                          true,
+                          context,
+                          isDarkMode,
+                        ),
+                        _buildNavItem(
+                          Icons.person_rounded,
+                          'Profile',
+                          false,
+                          context,
+                          isDarkMode,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -612,7 +1071,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
   Widget _buildGuestView(bool isDarkMode) {
     return Scaffold(
-      backgroundColor: isDarkMode ? const Color(0xFF121212) : AppColors.lightSurface,
+      backgroundColor: isDarkMode
+          ? const Color(0xFF121212)
+          : AppColors.lightSurface,
       body: SafeArea(
         child: Center(
           child: Padding(
@@ -620,18 +1081,16 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.lock_outline,
-                  size: 80,
-                  color: AppColors.primary,
-                ),
+                Icon(Icons.lock_outline, size: 80, color: AppColors.primary),
                 const SizedBox(height: 20),
                 Text(
                   'Sign In Required',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? AppColors.lightSurface : AppColors.accent,
+                    color: isDarkMode
+                        ? AppColors.lightSurface
+                        : AppColors.accent,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -650,7 +1109,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 40,
+                      vertical: 14,
+                    ),
                   ),
                   child: const Text(
                     'Go to Home',
@@ -694,9 +1156,15 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.lightSurface),
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: AppColors.lightSurface,
+            ),
             onPressed: () {
               if (_currentChatId.isNotEmpty) {
+                setState(() {
+                  _isEmojiPickerVisible = false;
+                });
                 _goBackToChatList();
               } else {
                 Navigator.pushReplacementNamed(context, '/home');
@@ -729,7 +1197,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _currentChatId.isEmpty ? "Messages" : _currentChatUser['name'] ?? 'User',
+                        _currentChatId.isEmpty
+                            ? "Messages"
+                            : _currentChatUser['name'] ?? 'User',
                         style: const TextStyle(
                           color: AppColors.lightSurface,
                           fontSize: 22,
@@ -739,15 +1209,12 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                         overflow: TextOverflow.ellipsis,
                       ),
                       if (_currentChatId.isNotEmpty)
-                      // chat_screen.dart - line 400 ke around
-
                         StreamBuilder<DocumentSnapshot>(
                           stream: FirebaseFirestore.instance
                               .collection('users')
                               .doc(_currentUserId)
                               .snapshots(),
                           builder: (context, snapshot) {
-                            // 🔥 PERMANENT FIX
                             bool isOnline = false;
                             if (snapshot.hasData && snapshot.data!.exists) {
                               var data = snapshot.data!.data() as Map<String, dynamic>?;
@@ -763,7 +1230,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                               ),
                             );
                           },
-                        )
+                        ),
                     ],
                   ),
                 ),
@@ -774,7 +1241,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             IconButton(
               icon: const Icon(Icons.search, color: AppColors.lightSurface),
               onPressed: () {
-                // Navigate to search to find users to chat with
                 Navigator.pushNamed(context, '/search');
               },
             )
@@ -790,6 +1256,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   _clearConversation();
                 } else if (value == 'block') {
                   _blockUser();
+                } else if (value == 'mute') {
+                  _muteNotifications();
+                } else if (value == 'report') {
+                  _reportUser();
                 }
               },
               itemBuilder: (context) => [
@@ -814,12 +1284,32 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   ),
                 ),
                 const PopupMenuItem(
+                  value: 'mute',
+                  child: Row(
+                    children: [
+                      Icon(Icons.notifications_off, color: AppColors.primary),
+                      SizedBox(width: 10),
+                      Text('Mute Notifications'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
                   value: 'clear_chat',
                   child: Row(
                     children: [
-                      Icon(Icons.delete, color: Colors.red),
+                      Icon(Icons.delete_sweep, color: Colors.orange),
                       SizedBox(width: 10),
                       Text('Clear Chat'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'report',
+                  child: Row(
+                    children: [
+                      Icon(Icons.flag, color: Colors.orange),
+                      SizedBox(width: 10),
+                      Text('Report User'),
                     ],
                   ),
                 ),
@@ -840,32 +1330,17 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildChatListView(bool isDarkMode) {
-    return TabBarView(
-      controller: _tabController,
-      children: [
-        // CHATS TAB
-        _buildChatsTab(isDarkMode),
-
-        // REQUESTS TAB (Coming Soon)
-        _buildRequestsTab(isDarkMode),
-
-        // CALLS TAB (Coming Soon)
-        _buildCallsTab(isDarkMode),
-      ],
-    );
-  }
-
   Widget _buildChatsTab(bool isDarkMode) {
     return Column(
       children: [
-        // Search Bar
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
             decoration: BoxDecoration(
-              color: isDarkMode ? const Color(0xFF2C2C2C) : AppColors.lightSurface,
+              color: isDarkMode
+                  ? const Color(0xFF2C2C2C)
+                  : AppColors.lightSurface,
               borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
@@ -886,12 +1361,16 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                     decoration: InputDecoration(
                       hintText: "Search conversations...",
                       hintStyle: TextStyle(
-                        color: isDarkMode ? Colors.grey[500]! : Colors.grey[600]!,
+                        color: isDarkMode
+                            ? Colors.grey[500]!
+                            : Colors.grey[600]!,
                       ),
                       border: InputBorder.none,
                     ),
                     style: TextStyle(
-                      color: isDarkMode ? AppColors.lightSurface : AppColors.textMain,
+                      color: isDarkMode
+                          ? AppColors.lightSurface
+                          : AppColors.textMain,
                     ),
                   ),
                 ),
@@ -899,8 +1378,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             ),
           ),
         ),
-
-        // Chat list
         Expanded(
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
@@ -926,17 +1403,14 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
               List<Map<String, dynamic>> chats = snapshot.data!;
 
-              // Filter based on search
               if (_searchController.text.isNotEmpty) {
                 chats = chats.where((chat) {
-                  return chat['name']
-                      .toString()
-                      .toLowerCase()
-                      .contains(_searchController.text.toLowerCase()) ||
-                      chat['username']
-                          .toString()
-                          .toLowerCase()
-                          .contains(_searchController.text.toLowerCase());
+                  return chat['name'].toString().toLowerCase().contains(
+                    _searchController.text.toLowerCase(),
+                  ) ||
+                      chat['username'].toString().toLowerCase().contains(
+                        _searchController.text.toLowerCase(),
+                      );
                 }).toList();
               }
 
@@ -948,7 +1422,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                       Icon(
                         Icons.chat_bubble_outline,
                         size: 80,
-                        color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
+                        color: isDarkMode
+                            ? Colors.grey[600]!
+                            : Colors.grey[300]!,
                       ),
                       const SizedBox(height: 20),
                       Text(
@@ -958,7 +1434,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: isDarkMode ? AppColors.lightSurface : AppColors.accent,
+                          color: isDarkMode
+                              ? AppColors.lightSurface
+                              : AppColors.accent,
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -967,13 +1445,16 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                             ? 'Try a different search term'
                             : 'Start a conversation with someone!',
                         style: TextStyle(
-                          color: isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
+                          color: isDarkMode
+                              ? Colors.grey[400]!
+                              : Colors.grey[600]!,
                         ),
                       ),
                       if (_searchController.text.isEmpty) ...[
                         const SizedBox(height: 20),
                         ElevatedButton.icon(
-                          onPressed: () => Navigator.pushNamed(context, '/search'),
+                          onPressed: () =>
+                              Navigator.pushNamed(context, '/search'),
                           icon: const Icon(Icons.search),
                           label: const Text('Find People to Chat'),
                           style: ElevatedButton.styleFrom(
@@ -987,7 +1468,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
               }
 
               return ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 itemCount: chats.length,
                 itemBuilder: (context, index) {
                   final chat = chats[index];
@@ -1046,9 +1530,28 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                         color: Colors.green,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: isDarkMode ? const Color(0xFF2C2C2C) : AppColors.lightSurface,
+                          color: isDarkMode
+                              ? const Color(0xFF2C2C2C)
+                              : AppColors.lightSurface,
                           width: 2,
                         ),
+                      ),
+                    ),
+                  ),
+                if (chat['is_muted'] == true)
+                  Positioned(
+                    left: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withOpacity(0.8),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.notifications_off,
+                        size: 10,
+                        color: Colors.white,
                       ),
                     ),
                   ),
@@ -1068,7 +1571,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: isDarkMode ? AppColors.lightSurface : AppColors.accent,
+                            color: isDarkMode
+                                ? AppColors.lightSurface
+                                : AppColors.accent,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1079,7 +1584,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                           _formatTime(chat['last_message_time']),
                           style: TextStyle(
                             fontSize: 12,
-                            color: isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
+                            color: isDarkMode
+                                ? Colors.grey[400]!
+                                : Colors.grey[600]!,
                           ),
                         ),
                     ],
@@ -1092,7 +1599,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                           chat['last_message']?.toString() ?? 'No messages yet',
                           style: TextStyle(
                             fontSize: 14,
-                            color: isDarkMode ? Colors.grey[300]! : Colors.grey[700]!,
+                            color: isDarkMode
+                                ? Colors.grey[300]!
+                                : Colors.grey[700]!,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1101,7 +1610,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                       if ((chat['unread_count'] ?? 0) > 0)
                         Container(
                           margin: const EdgeInsets.only(left: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.primary,
                             borderRadius: BorderRadius.circular(12),
@@ -1127,61 +1639,383 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildRequestsTab(bool isDarkMode) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.person_add_disabled,
-            size: 80,
-            color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'No pending requests',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? AppColors.lightSurface : AppColors.accent,
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: _chatService.getPendingRequests(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error, size: 60, color: Colors.red),
+                const SizedBox(height: 10),
+                Text('Error: ${snapshot.error}'),
+              ],
             ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Coming soon!',
-            style: TextStyle(
-              color: isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
+          );
+        }
+
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final requests = snapshot.data!;
+
+        if (requests.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.person_add_disabled,
+                  size: 80,
+                  color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'No pending requests',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? AppColors.lightSurface : AppColors.accent,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'When someone sends you a friend request, it will appear here',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: requests.length,
+          itemBuilder: (context, index) {
+            final request = requests[index];
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDarkMode ? const Color(0xFF2C2C2C) : AppColors.lightSurface,
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(isDarkMode ? 0.2 : 0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: AppColors.primary.withOpacity(0.2),
+                    backgroundImage: request['profilePic'] != null
+                        ? NetworkImage(request['profilePic'])
+                        : null,
+                    child: request['profilePic'] == null
+                        ? Text(
+                      request['avatar'] ?? '👤',
+                      style: const TextStyle(fontSize: 24),
+                    )
+                        : null,
+                  ),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          request['name'] ?? 'Unknown',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isDarkMode
+                                ? AppColors.lightSurface
+                                : AppColors.accent,
+                          ),
+                        ),
+                        if (request['username'] != null)
+                          Text(
+                            '@${request['username']}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDarkMode
+                                  ? Colors.grey[400]!
+                                  : Colors.grey[600]!,
+                            ),
+                          ),
+                        if (request['bio'] != null && request['bio'].isNotEmpty)
+                          Text(
+                            request['bio'],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDarkMode
+                                  ? Colors.grey[500]!
+                                  : Colors.grey[700]!,
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () => _acceptRequest(
+                                  request['request_id'],
+                                  request['sender_id'],
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                ),
+                                child: const Text('Accept'),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => _rejectRequest(
+                                  request['request_id'],
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                  side: const BorderSide(color: Colors.red),
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                ),
+                                child: const Text('Reject'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
   Widget _buildCallsTab(bool isDarkMode) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
+      children: [
+        if (_missedCallsCount > 0)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: Colors.red.withOpacity(0.1),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.call_missed, color: Colors.red, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$_missedCallsCount missed calls',
+                      style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                TextButton(
+                  onPressed: _markMissedCallsAsRead,
+                  child: const Text('Mark as read'),
+                ),
+              ],
+            ),
+          ),
+        Expanded(
+          child: StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _chatService.getCallHistory(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error, size: 60, color: Colors.red),
+                      const SizedBox(height: 10),
+                      Text('Error: ${snapshot.error}'),
+                    ],
+                  ),
+                );
+              }
+
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final calls = snapshot.data!;
+
+              if (calls.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.call_end,
+                        size: 80,
+                        color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
+                      ),
+                      const SizedBox(height: 20),
+                      Text(
+                        'No call history',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? AppColors.lightSurface : AppColors.accent,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Your call history will appear here',
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: calls.length,
+                itemBuilder: (context, index) {
+                  final call = calls[index];
+                  return _buildCallListItem(call, isDarkMode);
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCallListItem(Map<String, dynamic> call, bool isDarkMode) {
+    IconData callIcon;
+    Color callColor;
+    String statusText = '';
+
+    if (call['call_type'] == 'video') {
+      callIcon = Icons.videocam;
+    } else {
+      callIcon = Icons.call;
+    }
+
+    if (call['call_status'] == 'missed') {
+      callColor = Colors.red;
+      statusText = 'Missed';
+    } else if (call['call_status'] == 'rejected') {
+      callColor = Colors.orange;
+      statusText = 'Rejected';
+    } else {
+      callColor = Colors.green;
+      statusText = 'Completed';
+    }
+
+    String direction = call['is_outgoing'] ? 'Outgoing' : 'Incoming';
+    String duration = call['duration'] > 0
+        ? _chatService.formatDuration(call['duration'])
+        : '';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDarkMode ? const Color(0xFF2C2C2C) : AppColors.lightSurface,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
         children: [
-          Icon(
-            Icons.call_end,
-            size: 80,
-            color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
+          CircleAvatar(
+            radius: 25,
+            backgroundColor: AppColors.primary.withOpacity(0.2),
+            backgroundImage: call['profilePic'] != null
+                ? NetworkImage(call['profilePic'])
+                : null,
+            child: call['profilePic'] == null
+                ? Text(
+              call['avatar'] ?? '👤',
+              style: const TextStyle(fontSize: 20),
+            )
+                : null,
           ),
-          const SizedBox(height: 20),
-          Text(
-            'No call history',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? AppColors.lightSurface : AppColors.accent,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  call['name'] ?? 'Unknown',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode
+                        ? AppColors.lightSurface
+                        : AppColors.accent,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      callIcon,
+                      size: 14,
+                      color: callColor,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$direction • $statusText',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDarkMode
+                            ? Colors.grey[400]!
+                            : Colors.grey[600]!,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 10),
-          Text(
-            'Coming soon!',
-            style: TextStyle(
-              color: isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                _formatCallTime(call['timestamp']),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isDarkMode
+                      ? Colors.grey[500]!
+                      : Colors.grey[600]!,
+                ),
+              ),
+              if (duration.isNotEmpty)
+                Text(
+                  duration,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDarkMode
+                        ? Colors.grey[500]!
+                        : Colors.grey[600]!,
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -1191,8 +2025,8 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   Widget _buildChatDetailView(bool isDarkMode) {
     return Column(
       children: [
-        // Messages list
         Expanded(
+          flex: 1,  // Messages list ko 1 part
           child: StreamBuilder<List<Map<String, dynamic>>>(
             stream: _chatService.getMessages(_currentChatId),
             builder: (context, snapshot) {
@@ -1208,45 +2042,52 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
               if (messages.isEmpty) {
                 return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.chat_bubble_outline,
-                        size: 80,
-                        color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'No messages yet',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isDarkMode ? AppColors.lightSurface : AppColors.accent,
+                  child: SingleChildScrollView(  // ✅ Fix overflow
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 80,
+                          color: isDarkMode
+                              ? Colors.grey[600]!
+                              : Colors.grey[300]!,
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Send a message to start the conversation!',
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
+                        const SizedBox(height: 20),
+                        Text(
+                          'No messages yet',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isDarkMode
+                                ? AppColors.lightSurface
+                                : AppColors.accent,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          _messageController.text = 'Hi there! 👋';
-                          _sendMessage();
-                        },
-                        icon: const Icon(Icons.waving_hand),
-                        label: const Text('Say Hello'),
-                      ),
-                    ],
+                        const SizedBox(height: 10),
+                        Text(
+                          'Send a message to start the conversation!',
+                          style: TextStyle(
+                            color: isDarkMode
+                                ? Colors.grey[400]!
+                                : Colors.grey[600]!,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            _messageController.text = 'Hi there! 👋';
+                            _sendMessage();
+                          },
+                          icon: const Icon(Icons.waving_hand),
+                          label: const Text('Say Hello'),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               }
 
-              // Scroll to bottom when new messages arrive
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 _scrollToBottom();
               });
@@ -1259,25 +2100,97 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   final message = messages[index];
                   final isSent = message['is_sent'] == true;
 
-                  return _buildMessageBubble(message, isSent, isDarkMode, index);
+                  return _buildMessageBubble(
+                    message,
+                    isSent,
+                    isDarkMode,
+                    index,
+                  );
                 },
               );
             },
           ),
         ),
 
-        // Message input
-        _buildMessageInput(isDarkMode),
+        // ✅ Fix: Input field ko fixed height do
+        Container(
+          child: _buildMessageInput(isDarkMode),
+        ),
+
+        // ✅ Fix: Emoji picker ko exact height do
+        if (_isEmojiPickerVisible)
+          Container(
+            height: 300,  // Fixed height
+            color: isDarkMode ? const Color(0xFF2C2C2C) : Colors.white,
+            child: EmojiPicker(
+              onEmojiSelected: (Category? category, Emoji emoji) {
+                _onEmojiSelected(emoji);
+              },
+              onBackspacePressed: _onBackspacePressed,
+              config: const Config(),
+            ),
+          ),
       ],
     );
   }
 
-  Widget _buildMessageBubble(Map<String, dynamic> message, bool isSent, bool isDarkMode, int index) {
+  Widget _buildMessageBubble(
+      Map<String, dynamic> message,
+      bool isSent,
+      bool isDarkMode,
+      int index,
+      ) {
+    if (message['is_deleted'] == true && !isSent) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: AppColors.primary.withOpacity(0.2),
+                child: Text(
+                  _currentChatUser['avatar']?.toString() ?? '👤',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+            ),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: isDarkMode
+                      ? const Color(0xFF2C2C2C)
+                      : Colors.grey[300]!,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'This message was deleted',
+                  style: TextStyle(
+                    fontStyle: FontStyle.italic,
+                    color: isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: isSent ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isSent
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
           if (!isSent)
             GestureDetector(
@@ -1310,7 +2223,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         ListTile(
-                          leading: Icon(Icons.content_copy, color: AppColors.primary),
+                          leading: Icon(
+                            Icons.content_copy,
+                            color: AppColors.primary,
+                          ),
                           title: const Text('Copy'),
                           onTap: () {
                             _copyMessage(message['message'].toString());
@@ -1328,7 +2244,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                         if (isSent)
                           ListTile(
                             leading: Icon(Icons.delete, color: Colors.red),
-                            title: const Text('Delete', style: TextStyle(color: Colors.red)),
+                            title: const Text(
+                              'Delete',
+                              style: TextStyle(color: Colors.red),
+                            ),
                             onTap: () {
                               _deleteMessage(message['id']);
                               Navigator.pop(context);
@@ -1343,11 +2262,16 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                 constraints: BoxConstraints(
                   maxWidth: MediaQuery.of(context).size.width * 0.75,
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: isSent
                       ? AppColors.primary
-                      : (isDarkMode ? const Color(0xFF2C2C2C) : Colors.grey[100]!),
+                      : (isDarkMode
+                      ? const Color(0xFF2C2C2C)
+                      : Colors.grey[100]!),
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
@@ -1360,10 +2284,40 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (message['is_forwarded'] == true)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.share,
+                              size: 12,
+                              color: isSent
+                                  ? Colors.white70
+                                  : Colors.grey[500],
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Forwarded',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: isSent
+                                    ? Colors.white70
+                                    : Colors.grey[500],
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     Text(
                       message['message'].toString(),
                       style: TextStyle(
-                        color: isSent ? AppColors.lightSurface : (isDarkMode ? AppColors.lightSurface : AppColors.textMain),
+                        color: isSent
+                            ? AppColors.lightSurface
+                            : (isDarkMode
+                            ? AppColors.lightSurface
+                            : AppColors.textMain),
                         fontSize: 16,
                       ),
                     ),
@@ -1374,19 +2328,32 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                         Text(
                           message['time'].toString(),
                           style: TextStyle(
-                            color: isSent ? AppColors.lightSurface.withOpacity(0.7) : Colors.grey[500]!,
+                            color: isSent
+                                ? AppColors.lightSurface.withOpacity(0.7)
+                                : Colors.grey[500]!,
                             fontSize: 10,
                           ),
                         ),
                         if (isSent) ...[
                           const SizedBox(width: 4),
-                          Icon(
-                            message['is_read'] == true ? Icons.done_all : Icons.done,
-                            size: 12,
-                            color: message['is_read'] == true
-                                ? Colors.blue
-                                : AppColors.lightSurface.withOpacity(0.7),
-                          ),
+                          if (message['is_read'] == true)
+                            const Icon(
+                              Icons.done_all,
+                              size: 12,
+                              color: Colors.blue,
+                            )
+                          else if (message['is_delivered'] == true)
+                            const Icon(
+                              Icons.done_all,
+                              size: 12,
+                              color: Colors.grey,
+                            )
+                          else
+                            const Icon(
+                              Icons.done,
+                              size: 12,
+                              color: Colors.grey,
+                            ),
                         ],
                       ],
                     ),
@@ -1405,26 +2372,17 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: isDarkMode ? const Color(0xFF2C2C2C) : AppColors.lightSurface,
-        border: Border(
-          top: BorderSide(color: Colors.grey.withOpacity(0.1)),
-        ),
+        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.1))),
       ),
       child: Row(
         children: [
-          // Emoji button
           IconButton(
-            icon: Icon(Icons.emoji_emotions_outlined, color: AppColors.primary),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Emoji picker coming soon'),
-                  backgroundColor: Colors.blue,
-                ),
-              );
-            },
+            icon: Icon(
+              _isEmojiPickerVisible ? Icons.keyboard : Icons.emoji_emotions_outlined,
+              color: AppColors.primary,
+            ),
+            onPressed: _toggleEmojiPicker,
           ),
-
-          // Attach button
           PopupMenuButton<String>(
             icon: Icon(Icons.attach_file, color: AppColors.primary),
             itemBuilder: (context) => [
@@ -1460,16 +2418,16 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
               ),
             ],
             onSelected: (value) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('$value attachment selected'),
-                  backgroundColor: Colors.green,
-                ),
-              );
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('$value attachment selected'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
             },
           ),
-
-          // Message input field
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1482,39 +2440,49 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   Expanded(
                     child: TextField(
                       controller: _messageController,
+                      focusNode: _messageFocusNode,
                       decoration: InputDecoration(
                         hintText: "Type a message...",
                         hintStyle: TextStyle(
-                          color: isDarkMode ? Colors.grey[500]! : Colors.grey[600]!,
+                          color: isDarkMode
+                              ? Colors.grey[500]!
+                              : Colors.grey[600]!,
                         ),
                         border: InputBorder.none,
                       ),
                       style: TextStyle(
-                        color: isDarkMode ? AppColors.lightSurface : AppColors.textMain,
+                        color: isDarkMode
+                            ? AppColors.lightSurface
+                            : AppColors.textMain,
                       ),
                       maxLines: null,
                       onSubmitted: (_) => _sendMessage(),
+                      onTap: () {
+                        if (_isEmojiPickerVisible) {
+                          setState(() {
+                            _isEmojiPickerVisible = false;
+                          });
+                        }
+                      },
                     ),
                   ),
-
-                  // Voice message button
                   IconButton(
                     icon: Icon(Icons.mic_none, color: AppColors.primary),
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Voice message feature coming soon'),
-                          backgroundColor: Colors.blue,
-                        ),
-                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Voice message feature coming soon'),
+                            backgroundColor: Colors.blue,
+                          ),
+                        );
+                      }
                     },
                   ),
                 ],
               ),
             ),
           ),
-
-          // Send button
           const SizedBox(width: 12),
           Container(
             decoration: BoxDecoration(
@@ -1535,15 +2503,35 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     DateTime date = timestamp.toDate();
     DateTime now = DateTime.now();
 
-    if (date.day == now.day && date.month == now.month && date.year == now.year) {
-      // Today - show time
+    if (date.day == now.day &&
+        date.month == now.month &&
+        date.year == now.year) {
       return '${date.hour}:${date.minute.toString().padLeft(2, '0')}';
-    } else if (date.day == now.day - 1 && date.month == now.month && date.year == now.year) {
-      // Yesterday
+    } else if (date.day == now.day - 1 &&
+        date.month == now.month &&
+        date.year == now.year) {
       return 'Yesterday';
     } else {
-      // Other days
       return '${date.day}/${date.month}';
+    }
+  }
+
+  String _formatCallTime(Timestamp? timestamp) {
+    if (timestamp == null) return '';
+
+    DateTime date = timestamp.toDate();
+    DateTime now = DateTime.now();
+
+    if (date.day == now.day &&
+        date.month == now.month &&
+        date.year == now.year) {
+      return 'Today, ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    } else if (date.day == now.day - 1 &&
+        date.month == now.month &&
+        date.year == now.year) {
+      return 'Yesterday, ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
     }
   }
 }

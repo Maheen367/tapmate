@@ -5,6 +5,7 @@ import 'package:showcaseview/showcaseview.dart';
 import 'package:tapmate/Screen/Auth/LoginScreen.dart';
 import 'package:tapmate/Screen/Auth/splashscreen.dart';
 import 'package:tapmate/Screen/home/chat_screen.dart';
+import 'package:tapmate/Screen/home/create_post_screen.dart';
 import 'package:tapmate/Screen/home/home_screen.dart';
 import 'package:tapmate/Screen/home/platform_selection_screen.dart';
 import 'package:tapmate/Screen/home/library_screen.dart';
@@ -217,6 +218,7 @@ class MyApp extends StatelessWidget {
                 '/profile': (context) => const UserProfileScreen(),
                 '/settings': (context) => const SettingsScreen(),
                 '/login': (context) => const LoginScreen(),
+                '/create-post': (context) =>  CreatePostScreen(),
               },
             );
           },

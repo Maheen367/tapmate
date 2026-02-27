@@ -1,15 +1,18 @@
+// lib/Screen/home/feed_screen.dart (COMPLETE FIREBASE VERSION)
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide AuthProvider;
 import 'package:tapmate/Screen/Auth/LoginScreen.dart';
 import 'package:tapmate/Screen/home/comments_screen.dart';
 import 'package:tapmate/Screen/home/download_progress_screen.dart';
 import 'package:tapmate/Screen/home/other_user_profile_screen.dart';
 import 'package:tapmate/Screen/home/storage_selection_dialog.dart';
-import 'package:tapmate/Screen/services/dummy_data_service.dart';
+import 'package:tapmate/Screen/services/media_service.dart';
 import '../../auth_provider.dart';
 import '../../theme_provider.dart';
 import 'package:tapmate/Screen/constants/app_colors.dart';
-// Theme Colors
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -19,8 +22,13 @@ class FeedScreen extends StatefulWidget {
 }
 
 class _FeedScreenState extends State<FeedScreen> {
-  final List<Map<String, dynamic>> _feedItems = [];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final MediaService _mediaService = MediaService();
+
+  List<Map<String, dynamic>> _feedItems = [];
   bool _isLoading = false;
+  String? _lastVisible;
 
   @override
   void initState() {
@@ -29,50 +37,147 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Future<void> _loadFeedItems() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      QuerySnapshot postsSnapshot = await _firestore
+          .collection('posts')
+          .orderBy('createdAt', descending: true)
+          .limit(10)
+          .get();
 
-    final posts = DummyDataService.getFeedPosts();
+      List<Map<String, dynamic>> posts = [];
 
-    setState(() {
-      _feedItems.clear();
-      _feedItems.addAll(posts);
-      _isLoading = false;
-    });
-  }
+      for (var doc in postsSnapshot.docs) {
+        Map<String, dynamic> postData = doc.data() as Map<String, dynamic>;
 
-  void _toggleLike(int index) {
-    setState(() {
-      final post = _feedItems[index];
-      final isLiked = post['is_liked'] ?? false;
+        // Get user data for each post
+        DocumentSnapshot userDoc = await _firestore
+            .collection('users')
+            .doc(postData['userId'])
+            .get();
 
-      if (isLiked) {
-        post['is_liked'] = false;
-        post['likes_count'] = (post['likes_count'] as int) - 1;
-      } else {
-        post['is_liked'] = true;
-        post['likes_count'] = (post['likes_count'] as int) + 1;
+        Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>? ?? {};
+
+        // Check if current user liked this post
+        String? currentUserId = _auth.currentUser?.uid;
+        bool isLiked = false;
+        if (currentUserId != null) {
+          DocumentSnapshot likeDoc = await _firestore
+              .collection('posts')
+              .doc(doc.id)
+              .collection('likes')
+              .doc(currentUserId)
+              .get();
+          isLiked = likeDoc.exists;
+        }
+
+        posts.add({
+          'id': doc.id,
+          'user_id': postData['userId'],
+          'user_name': userData['name'] ?? 'Unknown User',
+          'user_profile_pic': userData['profile_pic'] ?? '',
+          'caption': postData['caption'] ?? '',
+          'thumbnail_url': postData['thumbnailUrl'] ?? '',
+          'video_url': postData['videoUrl'],
+          'platform': postData['platform'] ?? 'TapMate',
+          'created_at': _formatDate(postData['createdAt']),
+          'timestamp': postData['createdAt'],
+          'likes_count': postData['likes'] ?? 0,
+          'comments_count': postData['comments'] ?? 0,
+          'is_video': postData['isVideo'] ?? false,
+          'is_liked': isLiked,
+          'can_download': true,
+        });
       }
-    });
+
+      setState(() {
+        _feedItems = posts;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading feed: $e');
+      setState(() => _isLoading = false);
+    }
   }
 
-  void _viewUserProfile(String userId) {
-    final user = DummyDataService.getUserById(userId);
-    if (user != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => OtherUserProfileScreen(
-            userId: userId,
-            userName: user['full_name'],
-            userAvatar: user['avatar'],
-          ),
+  Future<void> _toggleLike(int index) async {
+    String? currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null) return;
+
+    String postId = _feedItems[index]['id'];
+    bool isLiked = _feedItems[index]['is_liked'] ?? false;
+
+    // Optimistic update
+    setState(() {
+      _feedItems[index]['is_liked'] = !isLiked;
+      _feedItems[index]['likes_count'] =
+          (_feedItems[index]['likes_count'] as int) + (isLiked ? -1 : 1);
+    });
+
+    try {
+      if (isLiked) {
+        // Unlike
+        await _firestore
+            .collection('posts')
+            .doc(postId)
+            .collection('likes')
+            .doc(currentUserId)
+            .delete();
+
+        await _firestore
+            .collection('posts')
+            .doc(postId)
+            .update({
+          'likes': FieldValue.increment(-1),
+        });
+      } else {
+        // Like
+        await _firestore
+            .collection('posts')
+            .doc(postId)
+            .collection('likes')
+            .doc(currentUserId)
+            .set({
+          'userId': currentUserId,
+          'likedAt': FieldValue.serverTimestamp(),
+        });
+
+        await _firestore
+            .collection('posts')
+            .doc(postId)
+            .update({
+          'likes': FieldValue.increment(1),
+        });
+      }
+    } catch (e) {
+      // Revert on error
+      setState(() {
+        _feedItems[index]['is_liked'] = isLiked;
+        _feedItems[index]['likes_count'] =
+            (_feedItems[index]['likes_count'] as int) + (isLiked ? 1 : -1);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
         ),
       );
     }
+  }
+
+  void _viewUserProfile(String userId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OtherUserProfileScreen(
+          userId: userId,
+          userName: '', // Will be loaded from Firestore
+          userAvatar: '👤',
+        ),
+      ),
+    );
   }
 
   void _sharePost(Map<String, dynamic> post) {
@@ -100,9 +205,7 @@ class _FeedScreenState extends State<FeedScreen> {
               title: const Text('Share via...', style: TextStyle(fontSize: 16)),
               onTap: () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Shared via platform')),
-                );
+                _shareViaOtherApps(post);
               },
             ),
             ListTile(
@@ -110,9 +213,7 @@ class _FeedScreenState extends State<FeedScreen> {
               title: const Text('Copy Link', style: TextStyle(fontSize: 16)),
               onTap: () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Link copied to clipboard')),
-                );
+                _copyPostLink(post['id']);
               },
             ),
             ListTile(
@@ -125,6 +226,26 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _shareViaOtherApps(Map<String, dynamic> post) {
+    // TODO: Implement using share_plus package
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Share feature coming soon!'),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
+  void _copyPostLink(String postId) {
+    // TODO: Implement deep linking
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Post link copied: post_$postId'),
+        backgroundColor: Colors.green,
       ),
     );
   }
@@ -165,6 +286,8 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   void _showPostOptions(Map<String, dynamic> post) {
+    bool isMyPost = post['user_id'] == _auth.currentUser?.uid;
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -175,42 +298,186 @@ class _FeedScreenState extends State<FeedScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: Icon(Icons.save_alt, color: AppColors.primary, size: 28),
-              title: Text('Save Post', style: TextStyle(fontSize: 16)),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Post saved')),
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.notifications_off, color: AppColors.primary, size: 28),
-              title: Text('Mute Notifications', style: TextStyle(fontSize: 16)),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Notifications muted')),
-                );
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: Icon(Icons.report, color: Colors.red, size: 28),
-              title: Text('Report Post', style: TextStyle(fontSize: 16, color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                _showReportDialog(post);
-              },
-            ),
+            if (isMyPost) ...[
+              ListTile(
+                leading: Icon(Icons.edit, color: AppColors.primary, size: 28),
+                title: Text('Edit Post', style: TextStyle(fontSize: 16)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _editPost(post);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.delete, color: Colors.red, size: 28),
+                title: Text('Delete Post', style: TextStyle(fontSize: 16, color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _deletePost(post);
+                },
+              ),
+            ] else ...[
+              ListTile(
+                leading: Icon(Icons.person_add, color: AppColors.primary, size: 28),
+                title: Text('Follow User', style: TextStyle(fontSize: 16)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _followUser(post['user_id']);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.block, color: Colors.red, size: 28),
+                title: Text('Block User', style: TextStyle(fontSize: 16, color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _blockUser(post);
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: Icon(Icons.report, color: Colors.orange, size: 28),
+                title: Text('Report Post', style: TextStyle(fontSize: 16, color: Colors.orange)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _reportPost(post);
+                },
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  void _showReportDialog(Map<String, dynamic> post) {
+  void _editPost(Map<String, dynamic> post) {
+    // TODO: Implement edit post
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Edit feature coming soon!'),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
+  void _deletePost(Map<String, dynamic> post) async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Post'),
+        content: const Text('Are you sure you want to delete this post?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+
+              try {
+                await _firestore.collection('posts').doc(post['id']).delete();
+
+                // Update local list
+                setState(() {
+                  _feedItems.removeWhere((item) => item['id'] == post['id']);
+                });
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Post deleted successfully'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error deleting post: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _followUser(String userId) async {
+    String? currentUserId = _auth.currentUser?.uid;
+    if (currentUserId == null) return;
+
+    try {
+      // Add to following
+      await _firestore
+          .collection('users')
+          .doc(currentUserId)
+          .collection('following')
+          .doc(userId)
+          .set({
+        'followedAt': FieldValue.serverTimestamp(),
+      });
+
+      // Update follower count
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .update({
+        'followers_count': FieldValue.increment(1),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User followed successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error following user: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _blockUser(Map<String, dynamic> post) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Block User'),
+        content: Text('Are you sure you want to block this user?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // TODO: Implement block functionality
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('User blocked'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Block'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _reportPost(Map<String, dynamic> post) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -225,7 +492,10 @@ class _FeedScreenState extends State<FeedScreen> {
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Post reported. Thank you for your feedback.')),
+                const SnackBar(
+                  content: Text('Post reported. Thank you for your feedback.'),
+                  backgroundColor: Colors.green,
+                ),
               );
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -236,14 +506,29 @@ class _FeedScreenState extends State<FeedScreen> {
     );
   }
 
+  String _formatDate(dynamic timestamp) {
+    if (timestamp == null) return 'Recently';
+    if (timestamp is Timestamp) {
+      DateTime date = timestamp.toDate();
+      DateTime now = DateTime.now();
+
+      if (date.day == now.day && date.month == now.month && date.year == now.year) {
+        return 'Today';
+      } else if (date.day == now.day - 1 && date.month == now.month && date.year == now.year) {
+        return 'Yesterday';
+      } else {
+        return '${date.day}/${date.month}/${date.year}';
+      }
+    }
+    return 'Recently';
+  }
+
   Widget _buildNavItem(IconData icon, String label, bool isActive, BuildContext context, bool isGuest, bool isDarkMode) {
     final bool isLocked = isGuest && (label == 'Message' || label == 'Profile');
 
     return GestureDetector(
       onTap: isLocked
-          ? () {
-        _showGuestFeatureDialog(label);
-      }
+          ? () => _showGuestFeatureDialog(label)
           : () {
         if (label == 'Home') {
           Navigator.pushReplacementNamed(context, '/home');
@@ -424,9 +709,7 @@ class _FeedScreenState extends State<FeedScreen> {
                               if (isGuest) {
                                 _showGuestInfo();
                               } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Create post feature coming soon!')),
-                                );
+                                Navigator.pushNamed(context, '/create-post');
                               }
                             },
                             tooltip: isGuest ? 'Info' : 'Create Post',
@@ -600,7 +883,15 @@ class _FeedScreenState extends State<FeedScreen> {
                   onTap: () => _viewUserProfile(item['user_id']),
                   child: CircleAvatar(
                     radius: 25,
-                    backgroundImage: NetworkImage(item['user_profile_pic']),
+                    backgroundImage: item['user_profile_pic'].isNotEmpty
+                        ? NetworkImage(item['user_profile_pic'])
+                        : null,
+                    child: item['user_profile_pic'].isEmpty
+                        ? Text(
+                      item['user_name'][0].toUpperCase(),
+                      style: const TextStyle(fontSize: 20),
+                    )
+                        : null,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -679,6 +970,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => CommentsScreen(
+                    postId: item['id'],  // 🔥 FIXED: Added postId
                     contentTitle: item['caption'],
                     initialCommentCount: item['comments_count'],
                   ),
@@ -745,49 +1037,6 @@ class _FeedScreenState extends State<FeedScreen> {
                         ),
                       ),
                     ),
-
-                  // Duration overlay for videos
-                  if (item['is_video'] == true)
-                    Positioned(
-                      bottom: 10,
-                      right: 10,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.textMain.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          item['duration'],
-                          style: const TextStyle(
-                            color: AppColors.lightSurface,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  // Platform badge
-                  Positioned(
-                    top: 10,
-                    left: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _getPlatformColor(item['platform']),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        item['platform'],
-                        style: const TextStyle(
-                          color: AppColors.lightSurface,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -804,16 +1053,6 @@ class _FeedScreenState extends State<FeedScreen> {
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.remove_red_eye, size: 16, color: Colors.grey[600]),
-                        const SizedBox(width: 4),
-                        Text(
-                          item['views'],
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(width: 16),
                         Icon(Icons.favorite, size: 16, color: Colors.grey[600]),
                         const SizedBox(width: 4),
                         Text(
@@ -835,22 +1074,6 @@ class _FeedScreenState extends State<FeedScreen> {
                         ),
                       ],
                     ),
-                    if (item['can_download'] == true && !isGuest)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          'Downloadable',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
                   ],
                 ),
 
@@ -858,7 +1081,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
                 // Action buttons
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     // Like button
                     Expanded(
@@ -892,6 +1115,7 @@ class _FeedScreenState extends State<FeedScreen> {
                             context,
                             MaterialPageRoute(
                               builder: (context) => CommentsScreen(
+                                postId: item['id'],  // 🔥 FIXED: Added postId
                                 contentTitle: item['caption'],
                                 initialCommentCount: item['comments_count'],
                               ),
@@ -929,27 +1153,6 @@ class _FeedScreenState extends State<FeedScreen> {
                         ),
                       ),
                     ),
-
-                    // Download button
-                    if (item['can_download'] == true)
-                      Expanded(
-                        child: TextButton.icon(
-                          onPressed: isGuest
-                              ? () => _showGuestFeatureDialog('Download')
-                              : () => _downloadContent(item),
-                          icon: Icon(Icons.download_outlined, color: AppColors.primary, size: 20),
-                          label: Text(
-                            'Download',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ],
@@ -1085,4 +1288,3 @@ class _FeedScreenState extends State<FeedScreen> {
     );
   }
 }
-

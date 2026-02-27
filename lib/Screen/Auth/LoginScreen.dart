@@ -1,10 +1,14 @@
+// lib/Screen/Auth/LoginScreen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tapmate/Screen/Auth/permissionscreen.dart';
 import 'package:tapmate/Screen/constants/app_colors.dart';
-import 'SignupScreen.dart';
-import 'resetpasswordScreen.dart';
-import '../home/home_screen.dart';
-import '../../auth_provider.dart' as myAuth;  // ← IMPORTANT: alias with myAuth
+import 'package:tapmate/Screen/Auth/SignupScreen.dart';
+import 'package:tapmate/Screen/Auth/resetpasswordScreen.dart';
+import 'package:tapmate/Screen/home/home_screen.dart';
+import 'package:tapmate/auth_provider.dart'; // 👈 REMOVED 'as myAuth'
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -23,6 +27,44 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    _checkIfAlreadyLoggedIn();
+    _loadSavedEmail();
+  }
+
+  // 🔥 CHECK IF USER ALREADY LOGGED IN
+  Future<void> _checkIfAlreadyLoggedIn() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    final authProvider = Provider.of<AuthProvider>(context, listen: false); // 👈 FIXED
+
+    if (isLoggedIn && authProvider.isLoggedIn) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    }
+  }
+
+  // 🔥 LOAD SAVED EMAIL IF REMEMBER ME WAS CHECKED
+  Future<void> _loadSavedEmail() async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false); // 👈 FIXED
+      final savedEmail = await authProvider.getSavedEmail(); // 👈 FIXED
+      if (savedEmail != null && savedEmail.isNotEmpty) {
+        setState(() {
+          _emailController.text = savedEmail;
+          _rememberMe = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading saved email: $e');
+    }
+  }
+
+  // 🔥 MAIN LOGIN HANDLER
   void _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -30,63 +72,192 @@ class _LoginScreenState extends State<LoginScreen> {
         _errorMessage = null;
       });
 
-      // ← FIXED: using myAuth.AuthProvider
-      final authProvider = Provider.of<myAuth.AuthProvider>(context, listen: false);
-      final result = await authProvider.loginWithEmailPassword(
-        _emailController.text.trim(),
-        _passwordController.text,
-      );
+      try {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false); // 👈 FIXED
 
-      setState(() => _isLoading = false);
+        final result = await authProvider.loginWithEmailPassword(
+          _emailController.text.trim(),
+          _passwordController.text,
+        );
+
+        if (result['success'] == true) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('isLoggedIn', true);
+
+          if (_rememberMe) {
+            await authProvider.saveUserEmail(_emailController.text.trim());
+          } else {
+            await authProvider.clearSavedEmail(); // 👈 FIXED
+          }
+
+          bool isNewUser = result['isNewUser'] ?? false;
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result['message']),
+                backgroundColor: Colors.green,
+              ),
+            );
+
+            if (isNewUser) {
+              await prefs.setBool('isNewUser', true);
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const PermissionScreen()),
+              );
+            } else {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const HomeScreen()),
+              );
+            }
+          }
+        } else {
+          setState(() {
+            _errorMessage = result['message'];
+          });
+        }
+      } catch (e) {
+        setState(() {
+          _errorMessage = 'An unexpected error occurred';
+        });
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
+      }
+    }
+  }
+
+  // 🔥 GOOGLE LOGIN HANDLER
+  Future<void> _handleGoogleLogin() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false); // 👈 FIXED
+      final result = await authProvider.signInWithGoogle();
 
       if (result['success'] == true) {
-        if (_rememberMe) {
-          _saveCredentials();
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
+
+        bool isNewUser = result['isNewUser'] ?? false;
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Google sign in successful!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          if (isNewUser) {
+            await prefs.setBool('isNewUser', true);
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const PermissionScreen()),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const HomeScreen()),
+            );
+          }
         }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message']),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
       } else {
         setState(() {
           _errorMessage = result['message'];
         });
       }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Google sign in failed';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
-  void _saveCredentials() {
-    print("Credentials saved for: ${_emailController.text}");
+  // 🔥 FACEBOOK LOGIN HANDLER
+  Future<void> _handleFacebookLogin() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false); // 👈 FIXED
+      final result = await authProvider.signInWithFacebook();
+
+      if (result['success'] == true) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
+
+        bool isNewUser = result['isNewUser'] ?? false;
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Facebook sign in successful!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          if (isNewUser) {
+            await prefs.setBool('isNewUser', true);
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const PermissionScreen()),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const HomeScreen()),
+            );
+          }
+        }
+      } else {
+        setState(() {
+          _errorMessage = result['message'];
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Facebook sign in failed';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
-  void _handleSocialLogin(String platform) async {
-    setState(() => _isLoading = true);
+  // 🔥 GUEST LOGIN HANDLER
+  void _handleGuestLogin() {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false); // 👈 FIXED
+      authProvider.setGuestMode(true);
+      authProvider.setOnboardingCompleted(true);
 
-    // ← FIXED: using myAuth.AuthProvider
-    final authProvider = Provider.of<myAuth.AuthProvider>(context, listen: false);
-    await authProvider.socialLogin(platform);
-
-    setState(() => _isLoading = false);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text("Logged in with $platform"),
-        backgroundColor: Colors.blue,
-      ),
-    );
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-    );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    } catch (e) {
+      debugPrint('Guest login error: $e');
+    }
   }
 
   @override
@@ -353,19 +524,26 @@ class _LoginScreenState extends State<LoginScreen> {
                     _socialButton(
                       icon: Icons.g_translate,
                       color: Colors.red,
-                      onTap: () => _handleSocialLogin("Google"),
+                      onTap: _handleGoogleLogin,
                     ),
                     const SizedBox(width: 20),
                     _socialButton(
                       icon: Icons.facebook,
                       color: Colors.blue,
-                      onTap: () => _handleSocialLogin("Facebook"),
+                      onTap: _handleFacebookLogin,
                     ),
                     const SizedBox(width: 20),
                     _socialButton(
                       icon: Icons.apple,
                       color: AppColors.textMain,
-                      onTap: () => _handleSocialLogin("Apple"),
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Apple login coming soon!"),
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -403,16 +581,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Guest Login
                 TextButton(
-                  onPressed: () {
-                    // ← FIXED: using myAuth.AuthProvider
-                    final authProvider = Provider.of<myAuth.AuthProvider>(context, listen: false);
-                    authProvider.setGuestMode(true);
-                    authProvider.setOnboardingCompleted(true);
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const HomeScreen()),
-                    );
-                  },
+                  onPressed: _handleGuestLogin,
                   child: const Text(
                     "Continue as Guest",
                     style: TextStyle(
