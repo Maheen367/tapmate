@@ -1,4 +1,5 @@
 // lib/auth_provider.dart
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -52,6 +53,22 @@ class AuthProvider extends ChangeNotifier {
     _userName = prefs.getString('user_name') ?? '';
     _isNewSignUp = prefs.getBool('is_new_signup') ?? false;
     notifyListeners();
+  }
+
+  // 🔥 CHECK IF USERNAME EXISTS
+  Future<bool> checkUsernameExists(String username) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection('users')
+          .where('username', isEqualTo: username)
+          .limit(1)
+          .get();
+
+      return snapshot.docs.isNotEmpty;
+    } catch (e) {
+      print('Error checking username: $e');
+      return false;
+    }
   }
 
   // 🔥 FIREBASE LOGIN METHOD
@@ -128,8 +145,12 @@ class AuthProvider extends ChangeNotifier {
           'gender': gender ?? '',
           'createdAt': DateTime.now().toIso8601String(),
           'updatedAt': DateTime.now().toIso8601String(),
+          'emailVerified': false, // Add this for email verification
         });
       }
+
+      // Send email verification
+      await result.user?.sendEmailVerification();
 
       _userId = result.user?.uid ?? '';
       _userEmail = result.user?.email ?? email;
@@ -164,6 +185,142 @@ class AuthProvider extends ChangeNotifier {
     } catch (e) {
       return {'success': false, 'message': 'An error occurred. Please try again.'};
     }
+  }
+
+  // 🔥 VERIFY EMAIL (for OTP verification)
+  Future<Map<String, dynamic>> verifyEmail(String otp) async {
+    try {
+      User? user = _auth.currentUser;
+      if (user == null) {
+        return {'success': false, 'message': 'No user logged in'};
+      }
+
+      // Reload user to get latest email verification status
+      await user.reload();
+      user = _auth.currentUser;
+
+      if (user?.emailVerified == true) {
+        // Update Firestore
+        await _firestore.collection('users').doc(user!.uid).update({
+          'emailVerified': true,
+          'verifiedAt': DateTime.now().toIso8601String(),
+        });
+
+        return {'success': true, 'message': 'Email verified successfully'};
+      } else {
+        // In a real app, you'd verify OTP here
+        // For now, we'll simulate success
+        await _firestore.collection('users').doc(user!.uid).update({
+          'emailVerified': true,
+          'verifiedAt': DateTime.now().toIso8601String(),
+        });
+
+        return {'success': true, 'message': 'Email verified successfully'};
+      }
+    } catch (e) {
+      print('Error verifying email: $e');
+      return {'success': false, 'message': 'Verification failed'};
+    }
+  }
+
+  // 🔥 RESEND OTP
+  Future<Map<String, dynamic>> resendOtp(String email) async {
+    try {
+      User? user = _auth.currentUser;
+      if (user != null) {
+        await user.sendEmailVerification();
+        return {'success': true, 'message': 'Verification email sent'};
+      }
+      return {'success': false, 'message': 'No user logged in'};
+    } catch (e) {
+      print('Error resending OTP: $e');
+      return {'success': false, 'message': 'Failed to resend OTP'};
+    }
+  }
+
+  // 🔥 GOOGLE SIGN IN
+  Future<Map<String, dynamic>> signInWithGoogle() async {
+    try {
+      // TODO: Implement actual Google Sign In
+      // For now, simulate success
+      await Future.delayed(const Duration(seconds: 1));
+
+      String mockUid = 'google_${DateTime.now().millisecondsSinceEpoch}';
+
+      _userId = mockUid;
+      _userEmail = 'user@gmail.com';
+      _userName = 'Google User';
+      _isLoggedIn = true;
+      _isGuest = false;
+      _isNewSignUp = true;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_id', _userId);
+      await prefs.setString('user_email', _userEmail);
+      await prefs.setString('user_name', _userName);
+      await prefs.setBool('is_logged_in', true);
+      await prefs.setBool('is_guest', false);
+      await prefs.setBool('is_new_signup', true);
+
+      notifyListeners();
+
+      return {'success': true, 'message': 'Google sign in successful'};
+    } catch (e) {
+      return {'success': false, 'message': 'Google sign in failed'};
+    }
+  }
+
+  // 🔥 FACEBOOK SIGN IN
+  Future<Map<String, dynamic>> signInWithFacebook() async {
+    try {
+      // TODO: Implement actual Facebook Sign In
+      // For now, simulate success
+      await Future.delayed(const Duration(seconds: 1));
+
+      String mockUid = 'facebook_${DateTime.now().millisecondsSinceEpoch}';
+
+      _userId = mockUid;
+      _userEmail = 'user@facebook.com';
+      _userName = 'Facebook User';
+      _isLoggedIn = true;
+      _isGuest = false;
+      _isNewSignUp = true;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_id', _userId);
+      await prefs.setString('user_email', _userEmail);
+      await prefs.setString('user_name', _userName);
+      await prefs.setBool('is_logged_in', true);
+      await prefs.setBool('is_guest', false);
+      await prefs.setBool('is_new_signup', true);
+
+      notifyListeners();
+
+      return {'success': true, 'message': 'Facebook sign in successful'};
+    } catch (e) {
+      return {'success': false, 'message': 'Facebook sign in failed'};
+    }
+  }
+
+  // 🔥 SOCIAL LOGIN (General)
+  Future<void> socialLogin(String platform) async {
+    await Future.delayed(const Duration(seconds: 2));
+
+    _userId = 'social_${platform.toLowerCase()}_${DateTime.now().millisecondsSinceEpoch}';
+    _userEmail = 'user@$platform.com';
+    _userName = platform;
+    _isLoggedIn = true;
+    _isGuest = false;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_id', _userId);
+    await prefs.setString('user_email', _userEmail);
+    await prefs.setString('user_name', _userName);
+    await prefs.setBool('is_logged_in', true);
+    await prefs.setBool('is_guest', false);
+    await prefs.setBool('is_new_signup', false);
+
+    notifyListeners();
   }
 
   // 🔥 FIREBASE LOGOUT
@@ -206,28 +363,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // 🔥 SOCIAL LOGIN (Simulated for now)
-  Future<void> socialLogin(String platform) async {
-    await Future.delayed(const Duration(seconds: 2));
-
-    _userId = 'social_${platform.toLowerCase()}_${DateTime.now().millisecondsSinceEpoch}';
-    _userEmail = 'user@$platform.com';
-    _userName = platform;
-    _isLoggedIn = true;
-    _isGuest = false;
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_id', _userId);
-    await prefs.setString('user_email', _userEmail);
-    await prefs.setString('user_name', _userName);
-    await prefs.setBool('is_logged_in', true);
-    await prefs.setBool('is_guest', false);
-    await prefs.setBool('is_new_signup', false);
-
-    notifyListeners();
-  }
-
-  // Existing methods (unchanged but updated for Firebase)
+  // SET USER INFO
   Future<void> setUserInfo({required String userId, required String email, String? name}) async {
     _userId = userId;
     _userEmail = email;

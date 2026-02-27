@@ -1,20 +1,19 @@
 name: tapmate
 description: "A new Flutter project."
 publish_to: 'none'
-
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.8.1
+  sdk: ^3.2.0  # IMPORTANT: 3.2.0 hi rakhna
 
 dependencies:
   flutter:
     sdk: flutter
 
-  # Firebase - LATEST VERSIONS
-  firebase_core: ^4.4.0
-  firebase_auth: ^6.1.4
-  cloud_firestore: ^6.1.2
+  # Firebase - YEH EXACT VERSIONS USE KARO
+  firebase_core: ^2.15.0
+  firebase_auth: ^4.7.0
+  cloud_firestore: ^4.8.0
 
   # Other packages
   cupertino_icons: ^1.0.8
@@ -30,6 +29,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+
 
 flutter:
   uses-material-design: true

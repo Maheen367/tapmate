@@ -1,7 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:tapmate/Screen/home/chat_screen.dart';
-import 'package:tapmate/Screen/services/dummy_data_service.dart';
+// lib/Screen/home/other_user_profile_screen.dart (UPDATED VERSION)
 
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:tapmate/Screen/home/chat_screen.dart';
+import 'package:tapmate/Screen/services/chat_service.dart';
 import 'package:tapmate/Screen/constants/app_colors.dart';
 
 class OtherUserProfileScreen extends StatefulWidget {
@@ -24,10 +26,15 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isFollowing = false;
+  bool _isLoading = true;
 
   // User data
-  late Map<String, dynamic> _userData;
+  Map<String, dynamic> _userData = {};
   List<Map<String, dynamic>> _userPosts = [];
+
+  // Services
+  final ChatService _chatService = ChatService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
@@ -36,59 +43,124 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
     _loadUserData();
   }
 
-  void _loadUserData() {
-    // Get user from dummy data
-    final user = DummyDataService.getUserById(widget.userId);
+  Future<void> _loadUserData() async {
+    setState(() => _isLoading = true);
 
-    setState(() {
-      _userData = user ?? {
-        'id': widget.userId,
-        'full_name': widget.userName,
-        'username': '@${widget.userName.toLowerCase().replaceAll(' ', '')}',
-        'avatar': widget.userAvatar,
-        'bio': 'This is a user bio',
-        'posts_count': 12,
-        'followers_count': 345,
-        'following_count': 123,
-        'is_following': false,
-        'is_private': false,
-      };
+    try {
+      // Get user from Firestore
+      DocumentSnapshot userDoc = await _firestore
+          .collection('users')
+          .doc(widget.userId)
+          .get();
 
-      _userPosts = _userData['is_private'] == true && !_isFollowing
-          ? []
-          : DummyDataService.getPostsByUser(widget.userId);
+      if (userDoc.exists) {
+        Map<String, dynamic> data = userDoc.data() as Map<String, dynamic>;
 
-      _isFollowing = _userData['is_following'] ?? false;
-    });
+        setState(() {
+          _userData = {
+            'id': widget.userId,
+            'full_name': data['name'] ?? widget.userName,
+            'username': data['username'] ?? '@user',
+            'avatar': data['avatar'] ?? data['profilePic'] ?? widget.userAvatar,
+            'profilePic': data['profilePic'] ?? '',
+            'bio': data['bio'] ?? 'No bio available',
+            'posts_count': data['postsCount'] ?? 0,
+            'followers_count': data['followersCount'] ?? 0,
+            'following_count': data['followingCount'] ?? 0,
+            'is_following': data['isFollowing'] ?? false,
+            'is_private': data['isPrivate'] ?? false,
+          };
+
+          _isFollowing = _userData['is_following'];
+        });
+
+        // Load user posts
+        await _loadUserPosts();
+      }
+    } catch (e) {
+      print('Error loading user data: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
-  void _toggleFollow() {
+  Future<void> _loadUserPosts() async {
+    try {
+      QuerySnapshot postsSnapshot = await _firestore
+          .collection('posts')
+          .where('userId', isEqualTo: widget.userId)
+          .orderBy('createdAt', descending: true)
+          .limit(20)
+          .get();
+
+      setState(() {
+        _userPosts = postsSnapshot.docs.map((doc) {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+          return {
+            'id': doc.id,
+            'thumbnail_url': data['thumbnailUrl'] ?? '',
+            'likes_count': data['likes'] ?? 0,
+            'is_video': data['isVideo'] ?? false,
+          };
+        }).toList();
+      });
+    } catch (e) {
+      print('Error loading posts: $e');
+    }
+  }
+
+  Future<void> _toggleFollow() async {
     setState(() {
       _isFollowing = !_isFollowing;
       if (_isFollowing) {
         _userData['followers_count'] = (_userData['followers_count'] ?? 0) + 1;
-        if (_userData['is_private'] == true) {
-          _userPosts = DummyDataService.getPostsByUser(widget.userId);
-        }
       } else {
         _userData['followers_count'] = (_userData['followers_count'] ?? 0) - 1;
-        if (_userData['is_private'] == true) {
-          _userPosts = [];
-        }
       }
-      _userData['is_following'] = _isFollowing;
-
-      DummyDataService.toggleFollow(widget.userId);
     });
+
+    try {
+      // Update follow status in Firestore
+      await _firestore.collection('users').doc(widget.userId).update({
+        'followersCount': _userData['followers_count'],
+        'isFollowing': _isFollowing,
+      });
+    } catch (e) {
+      print('Error updating follow: $e');
+      // Revert on error
+      setState(() {
+        _isFollowing = !_isFollowing;
+      });
+    }
   }
 
-  void _sendMessage() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const ChatScreen(),
-      ),
-    );
+  Future<void> _sendMessage() async {
+    try {
+      // Create or get existing chat
+      String chatId = await _chatService.createChat(widget.userId);
+
+      // Navigate to chat with this user
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatScreen(
+              initialChatId: chatId,
+              initialUserId: widget.userId,
+              initialUserName: _userData['full_name'] ?? widget.userName,
+              initialUserAvatar: _userData['avatar'] ?? widget.userAvatar,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to open chat: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -99,6 +171,13 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: AppColors.lightSurface,
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.lightSurface,
       body: SafeArea(
@@ -134,7 +213,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                   ),
                   Expanded(
                     child: Text(
-                      widget.userName,
+                      _userData['full_name'] ?? widget.userName,
                       style: const TextStyle(
                         color: AppColors.lightSurface,
                         fontSize: 22,
@@ -146,9 +225,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                   ),
                   IconButton(
                     icon: const Icon(Icons.more_vert, color: AppColors.lightSurface),
-                    onPressed: () {
-                      _showUserOptions();
-                    },
+                    onPressed: _showUserOptions,
                   ),
                 ],
               ),
@@ -170,10 +247,15 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                               CircleAvatar(
                                 radius: 50,
                                 backgroundColor: AppColors.primary.withOpacity(0.2),
-                                child: Text(
-                                  widget.userAvatar,
+                                backgroundImage: _userData['profilePic'] != null && _userData['profilePic'].isNotEmpty
+                                    ? NetworkImage(_userData['profilePic'])
+                                    : null,
+                                child: _userData['profilePic'] == null || _userData['profilePic'].isEmpty
+                                    ? Text(
+                                  _userData['avatar'] ?? '👤',
                                   style: const TextStyle(fontSize: 40),
-                                ),
+                                )
+                                    : null,
                               ),
                               const SizedBox(width: 30),
                               Expanded(
@@ -189,6 +271,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                             ],
                           ),
                           const SizedBox(height: 20),
+
                           // Username and Bio
                           Align(
                             alignment: Alignment.centerLeft,
@@ -196,7 +279,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  widget.userName,
+                                  _userData['full_name'] ?? widget.userName,
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -248,6 +331,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
                             ),
                           ),
                           const SizedBox(height: 20),
+
                           // Action Buttons
                           Row(
                             children: [
@@ -418,16 +502,22 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
-            post['thumbnail_url'] ?? 'https://picsum.photos/400/400',
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: Colors.grey[200],
-                child: const Icon(Icons.error, color: Colors.grey),
-              );
-            },
-          ),
+          if (post['thumbnail_url'] != null && post['thumbnail_url'].isNotEmpty)
+            Image.network(
+              post['thumbnail_url'],
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: Colors.grey[200],
+                  child: const Icon(Icons.error, color: Colors.grey),
+                );
+              },
+            )
+          else
+            Container(
+              color: Colors.grey[200],
+              child: const Icon(Icons.image, color: Colors.grey),
+            ),
           Positioned(
             bottom: 5,
             left: 5,
@@ -466,16 +556,22 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
-            post['thumbnail_url'] ?? 'https://picsum.photos/400/400',
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: Colors.grey[200],
-                child: const Icon(Icons.error, color: Colors.grey),
-              );
-            },
-          ),
+          if (post['thumbnail_url'] != null && post['thumbnail_url'].isNotEmpty)
+            Image.network(
+              post['thumbnail_url'],
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: Colors.grey[200],
+                  child: const Icon(Icons.error, color: Colors.grey),
+                );
+              },
+            )
+          else
+            Container(
+              color: Colors.grey[200],
+              child: const Icon(Icons.video_library, color: Colors.grey),
+            ),
           Center(
             child: Container(
               padding: const EdgeInsets.all(8),
@@ -546,7 +642,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Block User'),
-        content: Text('Are you sure you want to block ${widget.userName}?'),
+        content: Text('Are you sure you want to block ${_userData['full_name']}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -556,7 +652,7 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
             onPressed: () {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${widget.userName} has been blocked')),
+                SnackBar(content: Text('${_userData['full_name']} has been blocked')),
               );
             },
             style: ElevatedButton.styleFrom(
@@ -597,4 +693,3 @@ class _OtherUserProfileScreenState extends State<OtherUserProfileScreen>
     );
   }
 }
-
