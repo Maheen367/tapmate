@@ -3,12 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tapmate/Screen/Auth/LoginScreen.dart';
 import 'package:tapmate/Screen/Auth/permissionscreen.dart';
-
 import 'package:tapmate/Screen/constants/app_colors.dart';
 import 'package:tapmate/auth_provider.dart';
 import 'dart:async';
-
 import 'email_otp_screen.dart';
+import 'package:tapmate/auth_wrapper.dart';  // 🔥 YEH IMPORT HONA CHAHIYE
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -18,7 +17,7 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  // Controllers
+  // Controllers - ALL FIELDS (all are now required)
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -28,7 +27,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _recoveryEmailController = TextEditingController();
 
-  // Error messages
+  // Error messages for ALL fields
   String? _nameError;
   String? _emailError;
   String? _passwordError;
@@ -37,13 +36,13 @@ class _SignupScreenState extends State<SignupScreen> {
   String? _phoneError;
   String? _dobError;
   String? _recoveryEmailError;
+  String? _genderError;
   String? _signupError;
 
   // Variables
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _agreeToTerms = false;
-  bool _agreeToMarketing = false;
   bool _isLoading = false;
   DateTime? _selectedDate;
   String? _selectedGender;
@@ -79,24 +78,21 @@ class _SignupScreenState extends State<SignupScreen> {
     return RegExp(r'^[a-zA-Z0-9_]{3,20}$').hasMatch(username);
   }
 
-  // Phone validation
+  // Phone validation - REQUIRED
   bool _isValidPhone(String phone) {
-    if (phone.isEmpty) return true;
+    if (phone.isEmpty) return false;
     final digitsOnly = phone.replaceAll(RegExp(r'[^0-9]'), '');
     return digitsOnly.length >= 10 && digitsOnly.length <= 15;
+  }
+
+  // Recovery Email validation - REQUIRED (same as email)
+  bool _isValidRecoveryEmail(String email) {
+    return _isValidEmail(email);
   }
 
   // 🔥 PASSWORD VALIDATION - With conditions
   bool _isValidPassword(String password) {
     if (password.isEmpty) return false;
-
-    // Check all conditions:
-    // 1. At least 8 characters
-    // 2. At least one uppercase letter
-    // 3. At least one lowercase letter
-    // 4. At least one number
-    // 5. At least one special character (@, !, #, \$, %, etc.)
-
     return RegExp(
       r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$',
     ).hasMatch(password);
@@ -119,7 +115,7 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  // 🔥 UPDATED: Validate inputs with password and confirm password
+  // 🔥 UPDATED: Validate inputs - ALL FIELDS REQUIRED including Gender
   Future<void> _validateInputs() async {
     setState(() {
       _signupError = null;
@@ -138,10 +134,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
       if (cleanName.isEmpty) {
         _nameError = "⚠️ Full Name is required";
-      } else if (cleanName.length < 2) {
-        _nameError = "⚠️ Name must be at least 2 characters";
-      } else if (cleanName.length > 50) {
-        _nameError = "⚠️ Name must be less than 50 characters";
       } else if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(cleanName)) {
         _nameError = "⚠️ Only letters and spaces allowed";
       } else {
@@ -225,17 +217,14 @@ class _SignupScreenState extends State<SignupScreen> {
         _confirmPasswordError = null;
       }
 
-      // ===== PHONE VALIDATION =====
+      // ===== PHONE VALIDATION - REQUIRED =====
       final phone = _phoneController.text.trim();
-      if (phone.isNotEmpty) {
-        final digitsOnly = phone.replaceAll(RegExp(r'[^0-9]'), '');
-        if (digitsOnly.length < 10) {
-          _phoneError = "⚠️ Phone number must be at least 10 digits";
-        } else if (digitsOnly.length > 15) {
-          _phoneError = "⚠️ Phone number must be less than 15 digits";
-        } else {
-          _phoneError = null;
-        }
+      final digitsOnly = phone.replaceAll(RegExp(r'[^0-9]'), '');
+
+      if (phone.isEmpty) {
+        _phoneError = "⚠️ Phone number is required";
+      } else if (digitsOnly.length < 11) {
+        _phoneError = "⚠️ Phone number must be at least 11 digits";
       } else {
         _phoneError = null;
       }
@@ -245,6 +234,44 @@ class _SignupScreenState extends State<SignupScreen> {
         _dobError = "⚠️ Date of Birth is required";
       } else {
         _dobError = null;
+      }
+
+      // ===== GENDER VALIDATION - NOW REQUIRED =====
+      if (_selectedGender == null || _selectedGender!.isEmpty) {
+        _genderError = "⚠️ Please select your gender";
+      } else {
+        _genderError = null;
+      }
+
+      // ===== RECOVERY EMAIL VALIDATION - REQUIRED (same as email) =====
+      final recoveryEmail = _recoveryEmailController.text.trim().toLowerCase();
+      final cleanRecoveryEmail = recoveryEmail.replaceAll(' ', '');
+
+      if (recoveryEmail != cleanRecoveryEmail) {
+        _recoveryEmailController.text = cleanRecoveryEmail;
+        _recoveryEmailController.selection = TextSelection.collapsed(
+          offset: cleanRecoveryEmail.length,
+        );
+      }
+
+      if (cleanRecoveryEmail.isEmpty) {
+        _recoveryEmailError = "⚠️ Recovery Email is required";
+      } else if (cleanRecoveryEmail.contains(' ')) {
+        _recoveryEmailError = "⚠️ Recovery Email cannot contain spaces";
+      } else if (!cleanRecoveryEmail.contains('@')) {
+        _recoveryEmailError = "⚠️ Recovery Email must contain @ symbol";
+      } else if (!cleanRecoveryEmail.contains('.')) {
+        _recoveryEmailError = "⚠️ Recovery Email must contain domain (e.g., .com, .org)";
+      } else if (cleanRecoveryEmail.startsWith('@')) {
+        _recoveryEmailError = "⚠️ Recovery Email must have name before @";
+      } else if (cleanRecoveryEmail.endsWith('.')) {
+        _recoveryEmailError = "⚠️ Recovery Email cannot end with dot";
+      } else if (cleanRecoveryEmail.contains('..')) {
+        _recoveryEmailError = "⚠️ Recovery Email cannot contain consecutive dots";
+      } else if (!_isValidRecoveryEmail(cleanRecoveryEmail)) {
+        _recoveryEmailError = "⚠️ Enter a valid recovery email address";
+      } else {
+        _recoveryEmailError = null;
       }
     });
 
@@ -325,23 +352,6 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   // Snackbar methods
-  void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle, color: Colors.white),
-            const SizedBox(width: 10),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 3),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -354,6 +364,23 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
         backgroundColor: Colors.red,
         duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle, color: Colors.white),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -376,7 +403,7 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  // ============= 🔥🔥🔥 UPDATED SIGN UP METHOD WITH EMAIL VERIFICATION =============
+  // ============= 🔥🔥🔥 UPDATED SIGN UP METHOD =============
   void _signUp() async {
     await _validateInputs();
 
@@ -385,22 +412,26 @@ class _SignupScreenState extends State<SignupScreen> {
       return;
     }
 
-    // 🔥 Check for any validation errors
+    // 🔥 Check for any validation errors - ALL FIELDS INCLUDED
     if (_nameError != null ||
         _emailError != null ||
         _usernameError != null ||
         _passwordError != null ||
         _confirmPasswordError != null ||
+        _phoneError != null ||
         _dobError != null ||
-        _phoneError != null) {
+        _genderError != null ||
+        _recoveryEmailError != null) {
 
       if (_nameError != null) _showErrorSnackBar(_nameError!);
       else if (_emailError != null) _showErrorSnackBar(_emailError!);
       else if (_usernameError != null) _showErrorSnackBar(_usernameError!);
       else if (_passwordError != null) _showErrorSnackBar(_passwordError!);
       else if (_confirmPasswordError != null) _showErrorSnackBar(_confirmPasswordError!);
-      else if (_dobError != null) _showErrorSnackBar(_dobError!);
       else if (_phoneError != null) _showErrorSnackBar(_phoneError!);
+      else if (_dobError != null) _showErrorSnackBar(_dobError!);
+      else if (_genderError != null) _showErrorSnackBar(_genderError!);
+      else if (_recoveryEmailError != null) _showErrorSnackBar(_recoveryEmailError!);
       return;
     }
 
@@ -416,14 +447,8 @@ class _SignupScreenState extends State<SignupScreen> {
       final formattedName = _capitalizeName(_nameController.text.trim());
       final formattedEmail = _emailController.text.trim().toLowerCase();
       final formattedUsername = _usernameController.text.trim().toLowerCase();
-
-      String? formattedPhone;
-      if (_phoneController.text.trim().isNotEmpty) {
-        formattedPhone = _phoneController.text.trim().replaceAll(
-          RegExp(r'[^0-9]'),
-          '',
-        );
-      }
+      final formattedPhone = _phoneController.text.trim().replaceAll(RegExp(r'[^0-9]'), '');
+      final formattedRecoveryEmail = _recoveryEmailController.text.trim().toLowerCase();
 
       final result = await authProvider.signUpWithEmailPassword(
         name: formattedName,
@@ -433,6 +458,7 @@ class _SignupScreenState extends State<SignupScreen> {
         dob: _selectedDate,
         gender: _selectedGender ?? '',
         username: formattedUsername,
+        recoveryEmail: formattedRecoveryEmail,
       );
 
       if (result['success'] == true) {
@@ -460,9 +486,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
         if (result['message']?.contains('username') == true) {
           FocusScope.of(context).requestFocus(FocusNode());
-          Future.delayed(const Duration(milliseconds: 100), () {
-            FocusScope.of(context).requestFocus(FocusNode());
-          });
         }
       }
     } catch (e) {
@@ -503,66 +526,24 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  // FACEBOOK SIGN UP HANDLER
-  Future<void> _handleFacebookSignUp() async {
-    setState(() {
-      _isLoading = true;
-      _signupError = null;
-    });
-
-    try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final result = await authProvider.signInWithFacebook();
-
-      if (result['success'] == true) {
-        if (mounted) {
-          _showSuccessSnackBar('✅ Facebook sign up successful!');
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const PermissionScreen()),
-          );
-        }
-      } else {
-        setState(() => _signupError = result['message']);
-        _showErrorSnackBar('❌ ${result['message']}');
-      }
-    } catch (e) {
-      debugPrint('❌ Facebook sign up error: $e');
-      setState(() => _signupError = 'Facebook sign up failed');
-      _showErrorSnackBar('❌ Facebook sign up failed');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  // TikTok Sign Up Handler
-  Future<void> _handleTikTokSignUp() async {
-    setState(() {
-      _isLoading = true;
-      _signupError = null;
-    });
-
-    try {
-      await Future.delayed(const Duration(seconds: 1));
-      if (mounted) {
-        _showInfoSnackBar("TikTok sign up coming soon! 🎵");
-      }
-      debugPrint('TikTok sign up tapped');
-    } catch (e) {
-      debugPrint('❌ TikTok sign up error: $e');
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
   @override
   void dispose() {
     _usernameDebounce?.cancel();
     super.dispose();
+  }
+
+  // 🔥 NEW: Check if form is valid for button visibility - ALL FIELDS INCLUDED
+  bool _isFormValid() {
+    return _nameError == null && _nameController.text.isNotEmpty &&
+        _emailError == null && _emailController.text.isNotEmpty &&
+        _usernameError == null && _usernameController.text.isNotEmpty &&
+        _passwordError == null && _passwordController.text.isNotEmpty &&
+        _confirmPasswordError == null && _confirmPasswordController.text.isNotEmpty &&
+        _phoneError == null && _phoneController.text.isNotEmpty &&
+        _dobError == null && _selectedDate != null &&
+        _genderError == null && _selectedGender != null && _selectedGender!.isNotEmpty &&
+        _recoveryEmailError == null && _recoveryEmailController.text.isNotEmpty &&
+        _agreeToTerms;
   }
 
   @override
@@ -624,31 +605,31 @@ class _SignupScreenState extends State<SignupScreen> {
 
               const SizedBox(height: 10),
 
-              // Logo/Icon
+              // ===== NEW LOGO WITH GRADIENT =====
               Center(
                 child: Container(
-                  width: 80,
-                  height: 80,
+                  width: 100,
+                  height: 100,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
                     gradient: const LinearGradient(
-                      colors: [AppColors.primary, AppColors.secondary],
+                      colors: [AppColors.secondary, AppColors.primary],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
+                    borderRadius: BorderRadius.circular(25),
                     boxShadow: [
                       BoxShadow(
                         color: AppColors.primary.withOpacity(0.3),
-                        blurRadius: 15,
-                        offset: const Offset(0, 4),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
                       ),
                     ],
                   ),
                   child: const Center(
                     child: Icon(
-                      Icons.person_add_alt_1,
+                      Icons.download_for_offline_rounded,
                       color: AppColors.lightSurface,
-                      size: 40,
+                      size: 50,
                     ),
                   ),
                 ),
@@ -702,7 +683,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
               const SizedBox(height: 15),
 
-              // ===== PHONE NUMBER =====
+              // ===== PHONE NUMBER - REQUIRED =====
               _buildPhoneField(),
 
               const SizedBox(height: 15),
@@ -712,20 +693,13 @@ class _SignupScreenState extends State<SignupScreen> {
 
               const SizedBox(height: 15),
 
-              // ===== GENDER SELECTION =====
+              // ===== GENDER SELECTION - NOW REQUIRED =====
               _buildGenderSection(),
 
               const SizedBox(height: 15),
 
-              // ===== RECOVERY EMAIL =====
-              _buildInputField(
-                controller: _recoveryEmailController,
-                icon: Icons.email,
-                hint: "Recovery Email (Optional)",
-                error: _recoveryEmailError,
-                keyboardType: TextInputType.emailAddress,
-                onChange: _validateInputs,
-              ),
+              // ===== RECOVERY EMAIL - REQUIRED =====
+              _buildRecoveryEmailField(),
 
               const SizedBox(height: 20),
 
@@ -734,8 +708,11 @@ class _SignupScreenState extends State<SignupScreen> {
 
               const SizedBox(height: 25),
 
-              // ===== SIGN UP BUTTON =====
-              _buildSignUpButton(),
+              // ===== SIGN UP BUTTON (Visible only when form is valid) =====
+              if (_isFormValid())
+                _buildSignUpButton()
+              else
+                _buildDisabledButton(),
 
               const SizedBox(height: 20),
 
@@ -744,31 +721,8 @@ class _SignupScreenState extends State<SignupScreen> {
 
               const SizedBox(height: 20),
 
-              // ===== SOCIAL BUTTONS =====
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _socialButton(
-                    icon: Icons.g_translate,
-                    color: Colors.red,
-                    onTap: _handleGoogleSignUp,
-                  ),
-                  const SizedBox(width: 20),
-
-                  _socialButton(
-                    icon: Icons.facebook,
-                    color: Colors.blue,
-                    onTap: _handleFacebookSignUp,
-                  ),
-                  const SizedBox(width: 20),
-
-                  _socialButton(
-                    icon: Icons.music_note,
-                    color: const Color(0xFF000000),
-                    onTap: _handleTikTokSignUp,
-                  ),
-                ],
-              ),
+              // ===== GOOGLE SIGN IN BUTTON ONLY =====
+              _buildGoogleSignInButton(),
 
               const SizedBox(height: 25),
 
@@ -792,43 +746,36 @@ class _SignupScreenState extends State<SignupScreen> {
         borderRadius: BorderRadius.circular(12),
         border: _nameError != null ? Border.all(color: Colors.red, width: 1.5) : null,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: _nameController,
-            onChanged: (value) {
-              String cleanName = value.replaceAll(RegExp(r'[^a-zA-Z\s]'), '');
-              cleanName = cleanName.replaceAll(RegExp(r'\s+'), ' ');
-              if (value != cleanName) {
-                _nameController.value = TextEditingValue(
-                  text: cleanName,
-                  selection: TextSelection.collapsed(offset: cleanName.length),
-                );
-              }
-              _validateInputs();
-            },
-            textCapitalization: TextCapitalization.words,
-            keyboardType: TextInputType.name,
-            style: const TextStyle(color: AppColors.textMain, fontSize: 16),
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.person_outline, color: AppColors.textMain),
-              hintText: "Full Name",
-              hintStyle: const TextStyle(color: Colors.grey),
-              filled: true,
-              fillColor: Colors.transparent,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            ),
+      child: TextField(
+        controller: _nameController,
+        onChanged: (value) {
+          String cleanName = value.replaceAll(RegExp(r'[^a-zA-Z\s]'), '');
+          cleanName = cleanName.replaceAll(RegExp(r'\s+'), ' ');
+          if (value != cleanName) {
+            _nameController.value = TextEditingValue(
+              text: cleanName,
+              selection: TextSelection.collapsed(offset: cleanName.length),
+            );
+          }
+          _validateInputs();
+        },
+        textCapitalization: TextCapitalization.words,
+        keyboardType: TextInputType.name,
+        style: const TextStyle(color: AppColors.textMain, fontSize: 16),
+        decoration: InputDecoration(
+          prefixIcon: const Icon(Icons.person_outline, color: AppColors.textMain),
+          hintText: "Full Name",
+          hintStyle: const TextStyle(color: Colors.grey),
+          errorText: _nameError,
+          errorStyle: const TextStyle(color: Colors.red, fontSize: 12),
+          filled: true,
+          fillColor: Colors.transparent,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
           ),
-          if (_nameError != null)
-            _buildErrorContainer(_nameError!)
-          else
-            _buildInfoContainer("Only letters and spaces allowed"),
-        ],
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
       ),
     );
   }
@@ -840,44 +787,37 @@ class _SignupScreenState extends State<SignupScreen> {
         borderRadius: BorderRadius.circular(12),
         border: _emailError != null ? Border.all(color: Colors.red, width: 1.5) : null,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: _emailController,
-            onChanged: (value) {
-              final cleanEmail = value.toLowerCase().replaceAll(' ', '');
-              if (value != cleanEmail) {
-                _emailController.value = TextEditingValue(
-                  text: cleanEmail,
-                  selection: TextSelection.collapsed(offset: cleanEmail.length),
-                );
-              }
-              _validateInputs();
-            },
-            keyboardType: TextInputType.emailAddress,
-            textCapitalization: TextCapitalization.none,
-            autocorrect: false,
-            enableSuggestions: false,
-            style: const TextStyle(color: AppColors.textMain, fontSize: 16),
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textMain),
-              hintText: "Email Address",
-              hintStyle: const TextStyle(color: Colors.grey),
-              filled: true,
-              fillColor: Colors.transparent,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            ),
+      child: TextField(
+        controller: _emailController,
+        onChanged: (value) {
+          final cleanEmail = value.toLowerCase().replaceAll(' ', '');
+          if (value != cleanEmail) {
+            _emailController.value = TextEditingValue(
+              text: cleanEmail,
+              selection: TextSelection.collapsed(offset: cleanEmail.length),
+            );
+          }
+          _validateInputs();
+        },
+        keyboardType: TextInputType.emailAddress,
+        textCapitalization: TextCapitalization.none,
+        autocorrect: false,
+        enableSuggestions: false,
+        style: const TextStyle(color: AppColors.textMain, fontSize: 16),
+        decoration: InputDecoration(
+          prefixIcon: const Icon(Icons.email_outlined, color: AppColors.textMain),
+          hintText: "Email Address",
+          hintStyle: const TextStyle(color: Colors.grey),
+          errorText: _emailError,
+          errorStyle: const TextStyle(color: Colors.red, fontSize: 12),
+          filled: true,
+          fillColor: Colors.transparent,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
           ),
-          if (_emailError != null)
-            _buildErrorContainer(_emailError!)
-          else
-            _buildInfoContainer("Enter professional email (e.g., name@domain.com)"),
-        ],
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
       ),
     );
   }
@@ -889,175 +829,108 @@ class _SignupScreenState extends State<SignupScreen> {
         borderRadius: BorderRadius.circular(12),
         border: _usernameError != null ? Border.all(color: Colors.red, width: 1.5) : null,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: _usernameController,
-            onChanged: (value) {
-              String cleanUsername = value.toLowerCase().replaceAll(
-                RegExp(r'[^a-z0-9_]'),
-                '',
-              );
-              if (value != cleanUsername) {
-                _usernameController.value = TextEditingValue(
-                  text: cleanUsername,
-                  selection: TextSelection.collapsed(
-                    offset: cleanUsername.length,
-                  ),
-                );
-              }
-              _onUsernameChanged(cleanUsername);
-            },
-            keyboardType: TextInputType.text,
-            textCapitalization: TextCapitalization.none,
-            autocorrect: false,
-            enableSuggestions: false,
-            style: const TextStyle(color: AppColors.textMain, fontSize: 16),
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.alternate_email, color: AppColors.textMain),
-              hintText: "Username",
-              hintStyle: const TextStyle(color: Colors.grey),
-              filled: true,
-              fillColor: Colors.transparent,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+      child: TextField(
+        controller: _usernameController,
+        onChanged: (value) {
+          String cleanUsername = value.toLowerCase().replaceAll(
+            RegExp(r'[^a-z0-9_]'),
+            '',
+          );
+          if (value != cleanUsername) {
+            _usernameController.value = TextEditingValue(
+              text: cleanUsername,
+              selection: TextSelection.collapsed(
+                offset: cleanUsername.length,
               ),
-              suffixIcon: _usernameController.text.isNotEmpty && _usernameError == null
-                  ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
-                  : null,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            ),
+            );
+          }
+          _onUsernameChanged(cleanUsername);
+        },
+        keyboardType: TextInputType.text,
+        textCapitalization: TextCapitalization.none,
+        autocorrect: false,
+        enableSuggestions: false,
+        style: const TextStyle(color: AppColors.textMain, fontSize: 16),
+        decoration: InputDecoration(
+          prefixIcon: const Icon(Icons.alternate_email, color: AppColors.textMain),
+          hintText: "Username",
+          hintStyle: const TextStyle(color: Colors.grey),
+          errorText: _usernameError,
+          errorStyle: const TextStyle(color: Colors.red, fontSize: 12),
+          suffixIcon: _usernameController.text.isNotEmpty && _usernameError == null
+              ? const Icon(Icons.check_circle, color: Colors.green, size: 20)
+              : null,
+          filled: true,
+          fillColor: Colors.transparent,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
           ),
-          if (_usernameError != null)
-            _buildErrorContainer(_usernameError!)
-          else if (_usernameController.text.isNotEmpty)
-            _buildSuccessContainer("✓ Username is available")
-          else
-            _buildInfoContainer("3-20 characters, letters, numbers, underscore only"),
-        ],
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
       ),
     );
   }
 
-  Widget _buildInputField({
-    required TextEditingController controller,
-    required IconData icon,
-    required String hint,
-    String? error,
-    TextInputType keyboardType = TextInputType.text,
-    required Future<void> Function() onChange,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0F0F0),
-        borderRadius: BorderRadius.circular(12),
-        border: error != null ? Border.all(color: Colors.red, width: 1.5) : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: controller,
-            onChanged: (_) => onChange(),
-            keyboardType: keyboardType,
-            style: const TextStyle(color: AppColors.textMain, fontSize: 16),
-            decoration: InputDecoration(
-              prefixIcon: Icon(icon, color: AppColors.textMain),
-              hintText: hint,
-              hintStyle: const TextStyle(color: Colors.grey),
-              filled: true,
-              fillColor: Colors.transparent,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            ),
-          ),
-          if (error != null) _buildErrorContainer(error),
-        ],
-      ),
-    );
-  }
-
-  // 🔥 UPDATED: Password field with better UI
   Widget _buildPasswordField() {
-    bool isPasswordValid = _passwordController.text.isNotEmpty && _passwordError == null;
-    bool isPasswordWeak = _passwordController.text.isNotEmpty && _passwordError != null;
-
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFF0F0F0),
         borderRadius: BorderRadius.circular(12),
         border: _passwordError != null
             ? Border.all(color: Colors.red, width: 1.5)
-            : (isPasswordValid
+            : (_passwordController.text.isNotEmpty && _passwordError == null
             ? Border.all(color: Colors.green, width: 1.0)
             : null),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  onChanged: (_) => _validateInputs(),
-                  style: const TextStyle(color: AppColors.textMain, fontSize: 16),
-                  decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMain),
-                    hintText: "Password",
-                    hintStyle: const TextStyle(color: Colors.grey),
-                    filled: true,
-                    fillColor: Colors.transparent,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    suffixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (isPasswordValid)
-                          const Padding(
-                            padding: EdgeInsets.only(right: 4),
-                            child: Icon(Icons.check_circle, color: Colors.green, size: 18),
-                          ),
-                        IconButton(
-                          icon: Icon(
-                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                            color: AppColors.textMain,
-                          ),
-                          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                        ),
-                      ],
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  ),
+          Expanded(
+            child: TextField(
+              controller: _passwordController,
+              obscureText: _obscurePassword,
+              onChanged: (_) => _validateInputs(),
+              style: const TextStyle(color: AppColors.textMain, fontSize: 16),
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMain),
+                hintText: "Password",
+                hintStyle: const TextStyle(color: Colors.grey),
+                errorText: _passwordError,
+                errorStyle: const TextStyle(color: Colors.red, fontSize: 12),
+                filled: true,
+                fillColor: Colors.transparent,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
                 ),
+                suffixIcon: _passwordController.text.isNotEmpty && _passwordError == null
+                    ? const Padding(
+                  padding: EdgeInsets.only(right: 4),
+                  child: Icon(Icons.check_circle, color: Colors.green, size: 18),
+                )
+                    : null,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               ),
-              IconButton(
-                icon: const Icon(Icons.info_outline, color: Colors.blue),
-                onPressed: _showPasswordRequirements,
-              ),
-            ],
+            ),
           ),
-          if (_passwordError != null)
-            _buildErrorContainer(_passwordError!)
-          else if (_passwordController.text.isNotEmpty)
-            _buildSuccessContainer("✓ Password meets requirements"),
+          IconButton(
+            icon: Icon(
+              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+              color: AppColors.textMain,
+            ),
+            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+          ),
+          IconButton(
+            icon: const Icon(Icons.info_outline, color: Colors.blue),
+            onPressed: _showPasswordRequirements,
+          ),
         ],
       ),
     );
   }
 
-  // 🔥 UPDATED: Confirm password field with match indicator
   Widget _buildConfirmPasswordField() {
     bool passwordsMatch = _doPasswordsMatch() && _confirmPasswordController.text.isNotEmpty;
-    bool passwordsDontMatch = !_doPasswordsMatch() && _confirmPasswordController.text.isNotEmpty;
 
     return Container(
       decoration: BoxDecoration(
@@ -1069,53 +942,43 @@ class _SignupScreenState extends State<SignupScreen> {
             ? Border.all(color: Colors.green, width: 1.0)
             : null),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          TextField(
-            controller: _confirmPasswordController,
-            obscureText: _obscureConfirmPassword,
-            onChanged: (_) => _validateInputs(),
-            style: const TextStyle(color: AppColors.textMain, fontSize: 16),
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMain),
-              hintText: "Confirm Password",
-              hintStyle: const TextStyle(color: Colors.grey),
-              filled: true,
-              fillColor: Colors.transparent,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
+          Expanded(
+            child: TextField(
+              controller: _confirmPasswordController,
+              obscureText: _obscureConfirmPassword,
+              onChanged: (_) => _validateInputs(),
+              style: const TextStyle(color: AppColors.textMain, fontSize: 16),
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMain),
+                hintText: "Confirm Password",
+                hintStyle: const TextStyle(color: Colors.grey),
+                errorText: _confirmPasswordError,
+                errorStyle: const TextStyle(color: Colors.red, fontSize: 12),
+                filled: true,
+                fillColor: Colors.transparent,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                suffixIcon: passwordsMatch
+                    ? const Padding(
+                  padding: EdgeInsets.only(right: 4),
+                  child: Icon(Icons.check_circle, color: Colors.green, size: 18),
+                )
+                    : null,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               ),
-              suffixIcon: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (passwordsMatch)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 4),
-                      child: Icon(Icons.check_circle, color: Colors.green, size: 18),
-                    ),
-                  if (passwordsDontMatch)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 4),
-                      child: Icon(Icons.error, color: Colors.red, size: 18),
-                    ),
-                  IconButton(
-                    icon: Icon(
-                      _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
-                      color: AppColors.textMain,
-                    ),
-                    onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
-                  ),
-                ],
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             ),
           ),
-          if (_confirmPasswordError != null)
-            _buildErrorContainer(_confirmPasswordError!)
-          else if (_confirmPasswordController.text.isNotEmpty && passwordsMatch)
-            _buildSuccessContainer("✓ Passwords match"),
+          IconButton(
+            icon: Icon(
+              _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+              color: AppColors.textMain,
+            ),
+            onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+          ),
         ],
       ),
     );
@@ -1128,38 +991,34 @@ class _SignupScreenState extends State<SignupScreen> {
         borderRadius: BorderRadius.circular(12),
         border: _phoneError != null ? Border.all(color: Colors.red, width: 1.5) : null,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            controller: _phoneController,
-            onChanged: (value) {
-              final digitsOnly = value.replaceAll(RegExp(r'[^0-9]'), '');
-              if (value != digitsOnly) {
-                _phoneController.value = TextEditingValue(
-                  text: digitsOnly,
-                  selection: TextSelection.collapsed(offset: digitsOnly.length),
-                );
-              }
-              _validateInputs();
-            },
-            keyboardType: TextInputType.phone,
-            style: const TextStyle(color: AppColors.textMain, fontSize: 16),
-            decoration: InputDecoration(
-              prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.textMain),
-              hintText: "Phone Number (Optional)",
-              hintStyle: const TextStyle(color: Colors.grey),
-              filled: true,
-              fillColor: Colors.transparent,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            ),
+      child: TextField(
+        controller: _phoneController,
+        onChanged: (value) {
+          final digitsOnly = value.replaceAll(RegExp(r'[^0-9]'), '');
+          if (value != digitsOnly) {
+            _phoneController.value = TextEditingValue(
+              text: digitsOnly,
+              selection: TextSelection.collapsed(offset: digitsOnly.length),
+            );
+          }
+          _validateInputs();
+        },
+        keyboardType: TextInputType.phone,
+        style: const TextStyle(color: AppColors.textMain, fontSize: 16),
+        decoration: InputDecoration(
+          prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.textMain),
+          hintText: "Phone Number",
+          hintStyle: const TextStyle(color: Colors.grey),
+          errorText: _phoneError,
+          errorStyle: const TextStyle(color: Colors.red, fontSize: 12),
+          filled: true,
+          fillColor: Colors.transparent,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
           ),
-          if (_phoneError != null) _buildErrorContainer(_phoneError!),
-        ],
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
       ),
     );
   }
@@ -1171,112 +1030,29 @@ class _SignupScreenState extends State<SignupScreen> {
         borderRadius: BorderRadius.circular(12),
         border: _dobError != null ? Border.all(color: Colors.red, width: 1.5) : null,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GestureDetector(
-            onTap: () => _selectDate(context),
-            child: AbsorbPointer(
-              child: TextField(
-                controller: _dobController,
-                style: const TextStyle(color: AppColors.textMain, fontSize: 16),
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.calendar_today, color: AppColors.textMain),
-                  hintText: "Date of Birth",
-                  hintStyle: const TextStyle(color: Colors.grey),
-                  filled: true,
-                  fillColor: Colors.transparent,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  suffixIcon: const Icon(Icons.arrow_drop_down, color: AppColors.textMain),
-                ),
+      child: GestureDetector(
+        onTap: () => _selectDate(context),
+        child: AbsorbPointer(
+          child: TextField(
+            controller: _dobController,
+            style: const TextStyle(color: AppColors.textMain, fontSize: 16),
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.calendar_today, color: AppColors.textMain),
+              hintText: "Date of Birth",
+              hintStyle: const TextStyle(color: Colors.grey),
+              errorText: _dobError,
+              errorStyle: const TextStyle(color: Colors.red, fontSize: 12),
+              filled: true,
+              fillColor: Colors.transparent,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
               ),
+              suffixIcon: const Icon(Icons.arrow_drop_down, color: AppColors.textMain),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             ),
           ),
-          if (_dobError != null) _buildErrorContainer(_dobError!),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorContainer(String error) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      decoration: const BoxDecoration(
-        color: Color(0xFFFEE7E7),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(12),
-          bottomRight: Radius.circular(12),
         ),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.error_outline, color: Colors.red, size: 16),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              error,
-              style: const TextStyle(
-                color: Colors.red,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSuccessContainer(String message) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      decoration: const BoxDecoration(
-        color: Color(0xFFE8F5E9),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(12),
-          bottomRight: Radius.circular(12),
-        ),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle, color: Colors.green, size: 16),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: Colors.green,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoContainer(String message) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      decoration: const BoxDecoration(color: Colors.transparent),
-      child: Row(
-        children: [
-          const Icon(Icons.info_outline, color: Colors.grey, size: 14),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(color: Colors.grey, fontSize: 11),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1288,13 +1064,21 @@ class _SignupScreenState extends State<SignupScreen> {
         const Padding(
           padding: EdgeInsets.only(left: 8, bottom: 8),
           child: Text(
-            "Gender (Optional)",
+            "Gender",
             style: TextStyle(
               color: AppColors.textMain,
               fontWeight: FontWeight.w500,
             ),
           ),
         ),
+        if (_genderError != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 8, bottom: 8),
+            child: Text(
+              _genderError!,
+              style: const TextStyle(color: Colors.red, fontSize: 12),
+            ),
+          ),
         Row(
           children: [
             Expanded(child: _genderButton("Male", Icons.male)),
@@ -1312,7 +1096,10 @@ class _SignupScreenState extends State<SignupScreen> {
     bool isSelected = _selectedGender == gender;
     return OutlinedButton(
       onPressed: () {
-        setState(() => _selectedGender = gender);
+        setState(() {
+          _selectedGender = gender;
+          _genderError = null;
+        });
         _validateInputs();
       },
       style: OutlinedButton.styleFrom(
@@ -1341,6 +1128,46 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
+  Widget _buildRecoveryEmailField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F0F0),
+        borderRadius: BorderRadius.circular(12),
+        border: _recoveryEmailError != null ? Border.all(color: Colors.red, width: 1.5) : null,
+      ),
+      child: TextField(
+        controller: _recoveryEmailController,
+        onChanged: (value) {
+          final cleanEmail = value.toLowerCase().replaceAll(' ', '');
+          if (value != cleanEmail) {
+            _recoveryEmailController.value = TextEditingValue(
+              text: cleanEmail,
+              selection: TextSelection.collapsed(offset: cleanEmail.length),
+            );
+          }
+          _validateInputs();
+        },
+        keyboardType: TextInputType.emailAddress,
+        textCapitalization: TextCapitalization.none,
+        style: const TextStyle(color: AppColors.textMain, fontSize: 16),
+        decoration: InputDecoration(
+          prefixIcon: const Icon(Icons.email, color: AppColors.textMain),
+          hintText: "Recovery Email",
+          hintStyle: const TextStyle(color: Colors.grey),
+          errorText: _recoveryEmailError,
+          errorStyle: const TextStyle(color: Colors.red, fontSize: 12),
+          filled: true,
+          fillColor: Colors.transparent,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+      ),
+    );
+  }
+
   Widget _buildTermsSection() {
     return Column(
       children: [
@@ -1348,12 +1175,18 @@ class _SignupScreenState extends State<SignupScreen> {
           children: [
             Checkbox(
               value: _agreeToTerms,
-              onChanged: (value) => setState(() => _agreeToTerms = value ?? false),
+              onChanged: (value) {
+                setState(() => _agreeToTerms = value ?? false);
+                _validateInputs();
+              },
               activeColor: AppColors.primary,
             ),
             Expanded(
               child: GestureDetector(
-                onTap: () => setState(() => _agreeToTerms = !_agreeToTerms),
+                onTap: () {
+                  setState(() => _agreeToTerms = !_agreeToTerms);
+                  _validateInputs();
+                },
                 child: const Text.rich(
                   TextSpan(
                     style: TextStyle(color: AppColors.textMain),
@@ -1381,36 +1214,11 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
           ],
         ),
-        Row(
-          children: [
-            Checkbox(
-              value: _agreeToMarketing,
-              onChanged: (value) => setState(() => _agreeToMarketing = value ?? false),
-              activeColor: AppColors.primary,
-            ),
-            const Expanded(
-              child: Text(
-                "Receive marketing emails and updates",
-                style: TextStyle(color: AppColors.textMain),
-              ),
-            ),
-          ],
-        ),
       ],
     );
   }
 
   Widget _buildSignUpButton() {
-    // 🔥 Check if all fields are valid
-    bool isFormValid =
-        _nameError == null && _nameController.text.isNotEmpty &&
-            _emailError == null && _emailController.text.isNotEmpty &&
-            _usernameError == null && _usernameController.text.isNotEmpty &&
-            _passwordError == null && _passwordController.text.isNotEmpty &&
-            _confirmPasswordError == null && _confirmPasswordController.text.isNotEmpty &&
-            _dobError == null && _selectedDate != null &&
-            _agreeToTerms;
-
     return SizedBox(
       width: double.infinity,
       height: 55,
@@ -1445,6 +1253,69 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
+  Widget _buildDisabledButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 55,
+      child: ElevatedButton(
+        onPressed: null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.grey[400],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+        ),
+        child: const Text(
+          "Create Account",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGoogleSignInButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 55,
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _handleGoogleSignUp,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.white,
+          side: const BorderSide(color: AppColors.primary, width: 1.5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/icons/google_logo.png',
+              height: 24,
+              width: 24,
+              errorBuilder: (context, error, stackTrace) => const Icon(Icons.g_translate, color: Colors.red),
+            ),
+            const SizedBox(width: 10),
+            const Text(
+              "Sign up with Google",
+              style: TextStyle(
+                color: AppColors.textMain,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildDivider() {
     return Row(
       children: [
@@ -1452,7 +1323,7 @@ class _SignupScreenState extends State<SignupScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Text(
-            "Or sign up with",
+            "Or",
             style: TextStyle(color: Colors.grey[600]),
           ),
         ),
@@ -1483,26 +1354,6 @@ class _SignupScreenState extends State<SignupScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _socialButton({
-    required IconData icon,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color.withOpacity(0.1),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Center(child: Icon(icon, color: color, size: 24)),
       ),
     );
   }

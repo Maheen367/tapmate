@@ -17,6 +17,7 @@ import 'package:tapmate/theme_provider.dart';
 import 'package:tapmate/auth_provider.dart';
 import 'package:tapmate/utils/guide_manager.dart';
 import 'package:tapmate/Screen/constants/app_colors.dart';
+import 'auth_wrapper.dart';
 import 'firebase_options.dart'; // NEW: Firebase options import
 
 void main() async { // NEW: Added 'async'
@@ -207,7 +208,7 @@ class MyApp extends StatelessWidget {
               ),
 
               themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-              home: const SplashScreen(),
+              home: const AuthWrapper(),
               routes: {
                 '/home': (context) => const HomeScreen(),
                 '/chat': (context) => const ChatScreen(),

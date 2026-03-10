@@ -51,40 +51,46 @@ class OnboardingScreen extends StatelessWidget {
                   color: AppColors.textMain,
                 ),
               ),
-              const SizedBox(height: 50),
+              const SizedBox(height: 30), // Reduced from 50 to 30
 
-              // Feature List
-              Column(
-                children: [
-                  _featureTile(
-                    Icons.flash_on,
-                    "Lightning-fast downloads",
-                    "Download videos in seconds with our optimized technology",
+              // Feature List - Wrapped in Flexible to prevent overflow
+              Flexible(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    children: [
+                      _featureTile(
+                        Icons.flash_on,
+                        "Lightning-fast downloads",
+                        "Download videos in seconds with our optimized technology",
+                      ),
+                      const SizedBox(height: 15),
+                      _featureTile(
+                        Icons.handshake,
+                        "Connect with creators",
+                        "Follow and interact with your favorite creators",
+                      ),
+                      const SizedBox(height: 15),
+                      _featureTile(
+                        Icons.sync,
+                        "Sync across devices",
+                        "Access your downloads anywhere, anytime",
+                      ),
+                      const SizedBox(height: 20), // Add some bottom padding
+                    ],
                   ),
-                  const SizedBox(height: 15),
-                  _featureTile(
-                    Icons.handshake,
-                    "Connect with creators",
-                    "Follow and interact with your favorite creators",
-                  ),
-                  const SizedBox(height: 15),
-                  _featureTile(
-                    Icons.sync,
-                    "Sync across devices",
-                    "Access your downloads anywhere, anytime",
-                  ),
-                ],
+                ),
               ),
 
-              const Spacer(),
+              const SizedBox(height: 40),
 
-              // Get Started Button with Gradient - ✅ FIXED
+              // Get Started Button
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: TextButton(
                   onPressed: () {
-                    Navigator.pushReplacement(  // ✅ yahan change kiya
+                    Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
                           builder: (context) => const LoginScreen()),
@@ -120,7 +126,7 @@ class OnboardingScreen extends StatelessWidget {
 
               const SizedBox(height: 15),
 
-              // Continue as Guest - ✅ Already fixed hai
+              // Continue as Guest
               GestureDetector(
                 onTap: () {
                   final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -141,6 +147,7 @@ class OnboardingScreen extends StatelessWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 20), // Add bottom padding
             ],
           ),
         ),
@@ -187,4 +194,3 @@ class OnboardingScreen extends StatelessWidget {
     );
   }
 }
-

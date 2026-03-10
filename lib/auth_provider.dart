@@ -127,21 +127,24 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ============= 🔥🔥🔥 SIGN UP WITH EMAIL & PASSWORD =============
+  // ============= 🔥🔥🔥 SIGN UP WITH EMAIL & PASSWORD (UPDATED WITH RECOVERY EMAIL) =============
   Future<Map<String, dynamic>> signUpWithEmailPassword({
     required String name,
     required String email,
     required String password,
-    String? phone,
+    required String phone,  // Now required
     DateTime? dob,
-    String? gender,
+    required String gender,  // Now required
     required String username,
+    required String recoveryEmail,  // NEW required parameter
   }) async {
     try {
       debugPrint('\n🔵🔵🔵=== STARTING SIGNUP PROCESS ===🔵🔵🔵');
       debugPrint('📧 Email: $email');
       debugPrint('👤 Name: $name');
       debugPrint('👤 Username: $username');
+      debugPrint('📱 Phone: $phone');
+      debugPrint('📧 Recovery Email: $recoveryEmail');
 
       // ===== STEP 1: CHECK IF USERNAME ALREADY EXISTS =====
       final usernameExists = await checkUsernameExists(username);
@@ -214,7 +217,8 @@ class AuthProvider extends ChangeNotifier {
       }
 
       // ===== STEP 5: PREPARE USER DATA =====
-      String finalPhone = phone?.trim() ?? '';
+      String finalPhone = phone.trim();
+      String finalRecoveryEmail = recoveryEmail.trim().toLowerCase();
 
       Map<String, dynamic> userData = {
         // Personal Information
@@ -223,14 +227,15 @@ class AuthProvider extends ChangeNotifier {
         'email': email.trim(),
         'username': username.toLowerCase(),
         'phone': finalPhone,
+        'recoveryEmail': finalRecoveryEmail,  // Added recovery email
         'dob': dob?.toIso8601String() ?? '',
-        'gender': gender ?? '',
+        'gender': gender,
         'photoURL': '',
 
         // Account Status
         'isActive': true,
         'isVerified': false, // Will be true after email verification
-        'emailVerified': false, // New field for tracking
+        'emailVerified': false,
         'accountType': 'user',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -293,7 +298,8 @@ class AuthProvider extends ChangeNotifier {
       debugPrint('✅ User ID: $_userId');
       debugPrint('✅ User Email: $_userEmail');
       debugPrint('✅ User Name: $_userName');
-      debugPrint('✅ Username: $username\n');
+      debugPrint('✅ Username: $username');
+      debugPrint('✅ Recovery Email: $finalRecoveryEmail\n');
 
       return {
         'success': true,
@@ -448,6 +454,7 @@ class AuthProvider extends ChangeNotifier {
           'email': result.user?.email ?? email,
           'username': email.split('@')[0].toLowerCase(),
           'phone': '',
+          'recoveryEmail': '',
           'dob': '',
           'gender': '',
           'photoURL': result.user?.photoURL ?? '',
@@ -614,6 +621,7 @@ class AuthProvider extends ChangeNotifier {
           'email': facebookUserData['email'] ?? userCredential.user?.email ?? '',
           'username': finalUsername,
           'phone': '',
+          'recoveryEmail': '',
           'dob': '',
           'gender': '',
           'photoURL': userCredential.user?.photoURL ?? '',
@@ -767,6 +775,7 @@ class AuthProvider extends ChangeNotifier {
           'email': userCredential.user!.email ?? '',
           'username': finalUsername,
           'phone': '',
+          'recoveryEmail': '',
           'dob': '',
           'gender': '',
           'photoURL': userCredential.user!.photoURL ?? '',
@@ -858,10 +867,6 @@ class AuthProvider extends ChangeNotifier {
       await prefs.setString('user_name', '');
       await prefs.setBool('is_new_signup', false);
 
-      // 🔥 IMPORTANT: Remember me flags ko clear mat karo!
-      // Sirf login flags clear karo, saved email waisi hi rahegi
-      // await prefs.remove('saved_email'); // YE MAT KARO - Comment out karo
-
       notifyListeners();
       debugPrint('✅ Logout successful\n');
 
@@ -870,7 +875,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ============= 🔥🔥🔥 REMEMBER ME FUNCTIONS (ADD THESE) =============
+  // ============= 🔥🔥🔥 REMEMBER ME FUNCTIONS =============
 
   /// Save user email for remember me functionality
   Future<void> saveUserEmail(String email) async {

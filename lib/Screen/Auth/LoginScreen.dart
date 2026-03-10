@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // 🔥 ADD THIS IMPORT
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tapmate/Screen/Auth/permissionscreen.dart';
 import 'package:tapmate/Screen/constants/app_colors.dart';
 import 'package:tapmate/Screen/Auth/SignupScreen.dart';
 import 'package:tapmate/Screen/Auth/resetpasswordScreen.dart';
 import 'package:tapmate/Screen/home/home_screen.dart';
 import 'package:tapmate/auth_provider.dart';
+import 'package:tapmate/auth_wrapper.dart'; // 🔥 YEH IMPORT ADD KARO
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -87,22 +88,12 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             );
 
-            // Check if permission screen is needed
-            bool needsPermission = await authProvider.needsPermissionScreen();
-
-            if (needsPermission) {
-              // New user - go to permission screen
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const PermissionScreen()),
-              );
-            } else {
-              // Existing user - go to home
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const HomeScreen()),
-              );
-            }
+            // 🔥 YAHAN SE PURANA CODE HATAO AUR YEH LAGAO
+            // AuthWrapper decide karega next screen
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const AuthWrapper()),
+            );
           }
         } else {
           setState(() {
@@ -147,23 +138,11 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
 
-          // Check if permission screen is needed for new Google users
-          bool isNewUser = result['isNewUser'] ?? false;
-
-          if (isNewUser) {
-            await prefs.setBool('isNewUser', true);
-            // New user - go to permission screen
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const PermissionScreen()),
-            );
-          } else {
-            // Existing user - go to home
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const HomeScreen()),
-            );
-          }
+          // 🔥 YAHAN BHI YAHI CHANGE
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const AuthWrapper()),
+          );
         }
       } else {
         setState(() {
@@ -207,23 +186,11 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           );
 
-          // Check if permission screen is needed for new Facebook users
-          bool isNewUser = result['isNewUser'] ?? false;
-
-          if (isNewUser) {
-            await prefs.setBool('isNewUser', true);
-            // New user - go to permission screen
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const PermissionScreen()),
-            );
-          } else {
-            // Existing user - go to home
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const HomeScreen()),
-            );
-          }
+          // 🔥 YAHAN BHI YAHI CHANGE
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const AuthWrapper()),
+          );
         }
       } else {
         setState(() {
@@ -250,9 +217,10 @@ class _LoginScreenState extends State<LoginScreen> {
       authProvider.setGuestMode(true);
       authProvider.setOnboardingCompleted(true);
 
+      // 🔥 Guest login par bhi AuthWrapper
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const AuthWrapper()),
       );
     } catch (e) {
       debugPrint('Guest login error: $e');
@@ -309,28 +277,33 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
 
-                // Logo
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [AppColors.primary, AppColors.secondary],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary,
-                        blurRadius: 15,
-                        spreadRadius: 0,
-                        offset: Offset(0, 4),
+                // ===== LOGO WITH GRADIENT (Download Icon) =====
+                Center(
+                  child: Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.secondary, AppColors.primary],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                    ],
-                  ),
-                  child: const Center(
-                    child: Icon(Icons.lock_open, color: AppColors.lightSurface, size: 40),
+                      borderRadius: BorderRadius.circular(25),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.download_for_offline_rounded,
+                        color: AppColors.lightSurface,
+                        size: 50,
+                      ),
+                    ),
                   ),
                 ),
 
@@ -504,7 +477,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       child: Text(
-                        "Or continue with",
+                        "Or ",
                         style: TextStyle(color: Colors.grey[600]),
                       ),
                     ),
@@ -516,35 +489,41 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 20),
 
-                // Social Login Buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _socialButton(
-                      icon: Icons.g_translate,
-                      color: Colors.red,
-                      onTap: _handleGoogleLogin,
+                // ===== GOOGLE SIGN IN BUTTON =====
+                SizedBox(
+                  width: double.infinity,
+                  height: 55,
+                  child: ElevatedButton(
+                    onPressed: _isLoading ? null : _handleGoogleLogin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      side: const BorderSide(color: AppColors.primary, width: 1.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
                     ),
-                    const SizedBox(width: 20),
-                    _socialButton(
-                      icon: Icons.facebook,
-                      color: Colors.blue,
-                      onTap: _handleFacebookLogin,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset(
+                          'assets/icons/google_logo.png',
+                          height: 24,
+                          width: 24,
+                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.g_translate, color: Colors.red),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          "Sign in with Google",
+                          style: TextStyle(
+                            color: AppColors.textMain,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 20),
-                    // _socialButton(
-                    //   icon: Icons.apple,
-                    //   color: AppColors.textMain,
-                    //   onTap: () {
-                    //     ScaffoldMessenger.of(context).showSnackBar(
-                    //       const SnackBar(
-                    //         content: Text("Apple login coming soon!"),
-                    //         duration: Duration(seconds: 1),
-                    //       ),
-                    //     );
-                    //   },
-                    // ),
-                  ],
+                  ),
                 ),
 
                 const SizedBox(height: 25),
@@ -594,24 +573,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _socialButton({required IconData icon, required Color color, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color.withOpacity(0.1),
-          border: Border.all(color: color.withOpacity(0.3)),
-        ),
-        child: Center(
-          child: Icon(icon, color: color, size: 24),
         ),
       ),
     );

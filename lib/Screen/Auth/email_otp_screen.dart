@@ -61,7 +61,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
             if (mounted) {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
+                MaterialPageRoute(builder: (context) => const PermissionScreen()), // 🔥 Fixed: Goes to PermissionScreen
               );
             }
           });
@@ -149,19 +149,19 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(height: 40),
+              const SizedBox(height: 20),
 
-              // Animated Icon
+              // ===== NEW LOGO WITH GRADIENT =====
               Container(
-                width: 120,
-                height: 120,
+                width: 100,
+                height: 100,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
                   gradient: const LinearGradient(
-                    colors: [AppColors.primary, AppColors.secondary],
+                    colors: [AppColors.secondary, AppColors.primary],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
+                  borderRadius: BorderRadius.circular(25),
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.primary.withOpacity(0.3),
@@ -172,9 +172,9 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                 ),
                 child: const Center(
                   child: Icon(
-                    Icons.mark_email_unread,
+                    Icons.download_for_offline_rounded,
                     color: AppColors.lightSurface,
-                    size: 60,
+                    size: 50,
                   ),
                 ),
               ),
@@ -223,43 +223,9 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                 ),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 25),
 
-              // // Instructions
-              // Container(
-              //   padding: const EdgeInsets.all(20),
-              //   decoration: BoxDecoration(
-              //     color: const Color(0xFFF0F0F0),
-              //     borderRadius: BorderRadius.circular(16),
-              //   ),
-              //   child: Column(
-              //     children: [
-              //       _buildInstructionRow(
-              //         icon: Icons.mark_email_read,
-              //         text: "Open your email inbox",
-              //       ),
-              //       const SizedBox(height: 15),
-              //       _buildInstructionRow(
-              //         icon: Icons.mail_outline,
-              //         text: "Find the email from TapMate",
-              //       ),
-              //       const SizedBox(height: 15),
-              //       _buildInstructionRow(
-              //         icon: Icons.check_circle_outline,
-              //         text: "Click the verification link",
-              //       ),
-              //       const SizedBox(height: 15),
-              //       _buildInstructionRow(
-              //         icon: Icons.refresh,
-              //         text: "Come back and click 'I've Verified'",
-              //       ),
-              //     ],
-              //   ),
-              // ),
-              //
-              // const SizedBox(height: 25),
-
-              // Message Display
+              // ===== MESSAGE DISPLAY - Only shows when user clicks verify =====
               if (_message != null)
                 Container(
                   margin: const EdgeInsets.only(bottom: 20),
