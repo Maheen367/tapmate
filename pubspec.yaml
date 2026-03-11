@@ -29,6 +29,10 @@ dependencies:
   # Social Login - Use stable versions
   google_sign_in: 5.4.4  # CRITICAL: Use exact version 5.4.4 to fix type cast error
   flutter_facebook_auth: ^6.0.4
+  record: ^6.0.0  # For voice recording
+  permission_handler: ^11.0.1
+  audioplayers: ^5.2.1
+  wave: ^0.2.2  # For voice waveform
 
   # Other Packages
   cupertino_icons: ^1.0.8

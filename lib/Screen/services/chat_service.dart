@@ -1,8 +1,11 @@
-// lib/services/chat_service.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:tapmate/Screen/services/cloudinary_service.dart'; // NEW IMPORT
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -10,7 +13,7 @@ class ChatService {
 
   // ==================== CHAT LIST FEATURES ====================
 
-  // 1. GET ALL CHATS FOR CURRENT USER - FIXED VERSION (WITHOUT ORDERBY)
+  // GET ALL CHATS FOR CURRENT USER
   Stream<List<Map<String, dynamic>>> getChats() {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) {
@@ -20,13 +23,11 @@ class ChatService {
 
     print('📱 Fetching chats for user: ${currentUser.uid}');
 
-    // 🔥 FIXED: Removed orderBy to avoid index error
     return _firestore
         .collection('chats')
         .where('participants', arrayContains: currentUser.uid)
         .snapshots()
         .asyncMap((snapshot) async {
-
       print('📨 Raw chats from Firebase: ${snapshot.docs.length}');
 
       List<Map<String, dynamic>> chats = [];
@@ -35,7 +36,6 @@ class ChatService {
         try {
           Map<String, dynamic> chatData = doc.data() as Map<String, dynamic>;
 
-          // Get other participant's info
           List participants = List.from(chatData['participants'] ?? []);
 
           String otherUserId = participants.firstWhere(
@@ -45,7 +45,6 @@ class ChatService {
 
           if (otherUserId.isEmpty) continue;
 
-          // Get user data from Firestore
           DocumentSnapshot userDoc = await _firestore
               .collection('users')
               .doc(otherUserId)
@@ -57,7 +56,6 @@ class ChatService {
             if (data != null) userData = data as Map<String, dynamic>;
           }
 
-          // Handle empty profile pics
           String profilePic = userData['profilePic']?.toString() ??
               userData['photoURL']?.toString() ?? '';
 
@@ -77,13 +75,11 @@ class ChatService {
             'unread_count': unreadCount,
             'is_muted': isMuted,
           });
-
         } catch (e) {
           print('❌ Error processing chat doc: $e');
         }
       }
 
-      // 🔥 Manually sort chats by last_message_time
       chats.sort((a, b) {
         Timestamp? timeA = a['last_message_time'] as Timestamp?;
         Timestamp? timeB = b['last_message_time'] as Timestamp?;
@@ -96,32 +92,6 @@ class ChatService {
     });
   }
 
-  // 2. CHECK IF USER IS BLOCKED
-  Future<bool> _isUserBlocked(String otherUserId) async {
-    User? currentUser = _auth.currentUser;
-    if (currentUser == null) return false;
-
-    try {
-      DocumentSnapshot userDoc = await _firestore
-          .collection('users')
-          .doc(currentUser.uid)
-          .get();
-
-      Map<String, dynamic> userData = {};
-      if (userDoc.exists) {
-        var data = userDoc.data();
-        if (data != null) userData = data as Map<String, dynamic>;
-      }
-
-      List blockedUsers = List.from(userData['blocked_users'] ?? []);
-      return blockedUsers.contains(otherUserId);
-    } catch (e) {
-      print('Error checking blocked user: $e');
-      return false;
-    }
-  }
-
-  // 3. CHECK IF CHAT IS MUTED
   Future<bool> _isChatMuted(String chatId) async {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return false;
@@ -136,11 +106,7 @@ class ChatService {
 
       if (!prefDoc.exists) return false;
 
-      Map<String, dynamic> data = {};
-      if (prefDoc.exists) {
-        var prefData = prefDoc.data();
-        if (prefData != null) data = prefData as Map<String, dynamic>;
-      }
+      Map<String, dynamic> data = prefDoc.data() as Map<String, dynamic>? ?? {};
 
       bool muted = data['muted'] as bool? ?? false;
       Timestamp? mutedUntil = data['muted_until'] as Timestamp?;
@@ -160,21 +126,19 @@ class ChatService {
 
   // ==================== MESSAGE FEATURES ====================
 
-  // 4. GET MESSAGES FOR A CHAT - FIXED VERSION
+  // GET MESSAGES FOR A CHAT
   Stream<List<Map<String, dynamic>>> getMessages(String chatId) {
     if (chatId.isEmpty) return Stream.value([]);
 
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return Stream.value([]);
 
-    // 🔥 FIXED: Removed orderBy to avoid index error
     return _firestore
         .collection('chats')
         .doc(chatId)
         .collection('messages')
         .snapshots()
         .asyncMap((snapshot) async {
-
       String? otherUserId = await getOtherParticipantId(chatId);
 
       var messages = snapshot.docs.map((doc) {
@@ -187,7 +151,7 @@ class ChatService {
 
         bool isSentByMe = data['senderId'] == currentUser?.uid;
 
-        return {
+        Map<String, dynamic> messageMap = {
           'id': doc.id,
           'sender_id': data['senderId'],
           'message': isDeleted ? 'This message was deleted' : (data['message']?.toString() ?? ''),
@@ -203,9 +167,19 @@ class ChatService {
           'original_sender': data['original_sender'],
           'type': data['type']?.toString() ?? 'text',
         };
+
+        // Add voice-specific fields
+        if (data['type'] == 'voice') {
+          messageMap.addAll({
+            'audioUrl': data['audioUrl']?.toString() ?? '',
+            'duration': data['duration'] as int? ?? 0,
+            'fileSize': data['fileSize'] as int? ?? 0,
+          });
+        }
+
+        return messageMap;
       }).toList();
 
-      // 🔥 Manually sort messages by timestamp
       messages.sort((a, b) {
         Timestamp? timeA = a['timestamp'] as Timestamp?;
         Timestamp? timeB = b['timestamp'] as Timestamp?;
@@ -218,7 +192,7 @@ class ChatService {
     });
   }
 
-  // 5. SEND MESSAGE
+  // SEND TEXT MESSAGE
   Future<void> sendMessage(String chatId, String message) async {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) throw Exception('No user logged in');
@@ -233,12 +207,7 @@ class ChatService {
           .doc(otherUserId)
           .get();
 
-      Map<String, dynamic> userData = {};
-      if (userDoc.exists) {
-        var data = userDoc.data();
-        if (data != null) userData = data as Map<String, dynamic>;
-      }
-
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>? ?? {};
       bool isOtherOnline = userData['isOnline'] as bool? ?? false;
 
       Map<String, dynamic> messageData = {
@@ -273,7 +242,121 @@ class ChatService {
     }
   }
 
-  // 6. SETUP DELIVERY LISTENER
+  // SEND VOICE MESSAGE - UPDATED WITH CLOUDINARY
+  Future<void> sendVoiceMessage(
+      String chatId,
+      File audioFile, {
+        int duration = 0,
+      }) async {
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) throw Exception('No user logged in');
+
+    try {
+      String? otherUserId = await getOtherParticipantId(chatId);
+      if (otherUserId == null) throw Exception('Other user not found');
+
+      print('📤 Uploading voice message to Cloudinary: ${audioFile.path}');
+      print('📏 File size: ${await audioFile.length()} bytes');
+      print('⏱️ Duration: $duration seconds');
+
+      // Upload to Cloudinary
+      String? audioUrl = await CloudinaryService().uploadVoiceMessage(
+        audioFile,
+        userId: currentUser.uid,
+        chatId: chatId,
+      );
+
+      if (audioUrl == null) {
+        throw Exception('Failed to upload to Cloudinary');
+      }
+
+      print('✅ Cloudinary URL: $audioUrl');
+
+      // Check if other user is online
+      DocumentSnapshot userDoc = await _firestore
+          .collection('users')
+          .doc(otherUserId)
+          .get();
+
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>? ?? {};
+      bool isOtherOnline = userData['isOnline'] as bool? ?? false;
+
+      // Create message in Firestore with Cloudinary URL
+      Map<String, dynamic> messageData = {
+        'senderId': currentUser.uid,
+        'message': '🎤 Voice message',
+        'audioUrl': audioUrl,
+        'duration': duration,
+        'timestamp': FieldValue.serverTimestamp(),
+        'type': 'voice',
+        'readBy': [currentUser.uid],
+        'deliveredTo': isOtherOnline ? [otherUserId] : [],
+        'is_deleted': false,
+        'is_forwarded': false,
+        'fileSize': await audioFile.length(),
+        'cloudName': 'dvxejhpau',
+      };
+
+      // Add message to chat
+      DocumentReference msgRef = await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .add(messageData);
+
+      print('✅ Voice message added to chat: ${msgRef.id}');
+
+      // Update chat last message
+      await _firestore.collection('chats').doc(chatId).update({
+        'lastMessage': '🎤 Voice message',
+        'lastMessageTime': FieldValue.serverTimestamp(),
+        'lastMessageSender': currentUser.uid,
+        'lastMessageType': 'voice',
+      });
+
+      // Delete temp file after successful upload
+      try {
+        if (await audioFile.exists()) {
+          await audioFile.delete();
+          print('✅ Temp file deleted');
+        }
+      } catch (e) {
+        print('⚠️ Error deleting temp file: $e');
+      }
+    } catch (e) {
+      print('❌ Error sending voice message: $e');
+      rethrow;
+    }
+  }
+
+  // NEW: Download voice message from Cloudinary
+  Future<File?> downloadVoiceMessage(String audioUrl) async {
+    try {
+      print('📥 Downloading voice from: $audioUrl');
+
+      // Create a unique filename
+      final tempDir = await getTemporaryDirectory();
+      final fileName = 'voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      final filePath = '${tempDir.path}/$fileName';
+      final file = File(filePath);
+
+      // Download the file
+      final response = await http.get(Uri.parse(audioUrl));
+
+      if (response.statusCode == 200) {
+        await file.writeAsBytes(response.bodyBytes);
+        print('✅ Voice downloaded to: $filePath');
+        return file;
+      } else {
+        print('❌ Download failed: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ Error downloading voice: $e');
+      return null;
+    }
+  }
+
   void _setupDeliveryListener(String chatId, String messageId, String otherUserId) {
     _firestore.collection('users').doc(otherUserId).snapshots().listen((snapshot) {
       if (snapshot.exists) {
@@ -299,7 +382,7 @@ class ChatService {
     });
   }
 
-  // 7. MARK MESSAGES AS READ
+  // MARK MESSAGES AS READ
   Future<void> markMessagesAsRead(String chatId) async {
     User? currentUser = _auth.currentUser;
     if (currentUser == null || chatId.isEmpty) return;
@@ -338,13 +421,12 @@ class ChatService {
         await batch.commit();
         print('✅ Marked $updatedCount messages as read');
       }
-
     } catch (e) {
       print('❌ Error marking messages as read: $e');
     }
   }
 
-  // 8. DELETE MESSAGE
+  // DELETE MESSAGE
   Future<void> deleteMessage(String chatId, String messageId) async {
     try {
       await _firestore
@@ -360,7 +442,7 @@ class ChatService {
     }
   }
 
-  // 9. FORWARD MESSAGE
+  // FORWARD MESSAGE
   Future<void> forwardMessage(String fromChatId, String messageId, String toUserId) async {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) throw Exception('No user logged in');
@@ -408,7 +490,7 @@ class ChatService {
     }
   }
 
-  // 10. GET OR CREATE CHAT
+  // GET OR CREATE CHAT
   Future<String> getOrCreateChat(String otherUserId) async {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) throw Exception('No user logged in');
@@ -443,12 +525,12 @@ class ChatService {
     }
   }
 
-  // 11. CREATE NEW CHAT
+  // CREATE NEW CHAT
   Future<String> createChat(String otherUserId) async {
     return getOrCreateChat(otherUserId);
   }
 
-  // 12. CLEAR CONVERSATION
+  // CLEAR CONVERSATION
   Future<void> clearConversation(String chatId) async {
     try {
       QuerySnapshot messages = await _firestore
@@ -481,7 +563,7 @@ class ChatService {
     }
   }
 
-  // 13. BLOCK USER
+  // BLOCK USER
   Future<void> blockUser(String userId) async {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return;
@@ -507,7 +589,7 @@ class ChatService {
     }
   }
 
-  // 14. UNBLOCK USER
+  // UNBLOCK USER
   Future<void> unblockUser(String userId) async {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return;
@@ -526,7 +608,7 @@ class ChatService {
     }
   }
 
-  // 15. REPORT USER
+  // REPORT USER
   Future<void> reportUser(String userId, {String? reason, String? messageId}) async {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return;
@@ -547,7 +629,7 @@ class ChatService {
     }
   }
 
-  // 16. MUTE/UNMUTE CHAT
+  // MUTE/UNMUTE CHAT
   Future<void> muteChat(String chatId, {bool mute = true}) async {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return;
@@ -570,7 +652,7 @@ class ChatService {
     }
   }
 
-  // 17. UPDATE ONLINE STATUS
+  // UPDATE ONLINE STATUS
   Future<void> updateOnlineStatus(bool isOnline) async {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return;
@@ -586,7 +668,7 @@ class ChatService {
     }
   }
 
-  // 18. SEND FRIEND REQUEST
+  // SEND FRIEND REQUEST
   Future<void> sendFriendRequest(String receiverId) async {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return;
@@ -625,7 +707,7 @@ class ChatService {
     }
   }
 
-  // 19. GET PENDING FRIEND REQUESTS
+  // GET PENDING FRIEND REQUESTS
   Stream<List<Map<String, dynamic>>> getPendingRequests() {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return Stream.value([]);
@@ -647,11 +729,7 @@ class ChatService {
             .doc(data['sender_id'])
             .get();
 
-        Map<String, dynamic> userData = {};
-        if (userDoc.exists) {
-          var userDocData = userDoc.data();
-          if (userDocData != null) userData = userDocData as Map<String, dynamic>;
-        }
+        Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>? ?? {};
 
         String profilePic = userData['profilePic']?.toString() ??
             userData['photoURL']?.toString() ?? '';
@@ -673,7 +751,7 @@ class ChatService {
     });
   }
 
-  // 20. GET SENT REQUESTS
+  // GET SENT REQUESTS
   Stream<List<Map<String, dynamic>>> getSentRequests() {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return Stream.value([]);
@@ -694,11 +772,7 @@ class ChatService {
             .doc(data['receiver_id'])
             .get();
 
-        Map<String, dynamic> userData = {};
-        if (userDoc.exists) {
-          var userDocData = userDoc.data();
-          if (userDocData != null) userData = userDocData as Map<String, dynamic>;
-        }
+        Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>? ?? {};
 
         String profilePic = userData['profilePic']?.toString() ??
             userData['photoURL']?.toString() ?? '';
@@ -719,7 +793,7 @@ class ChatService {
     });
   }
 
-  // 21. ACCEPT FRIEND REQUEST
+  // ACCEPT FRIEND REQUEST
   Future<void> acceptFriendRequest(String requestId, String senderId) async {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return;
@@ -750,7 +824,7 @@ class ChatService {
     }
   }
 
-  // 22. REJECT FRIEND REQUEST
+  // REJECT FRIEND REQUEST
   Future<void> rejectFriendRequest(String requestId) async {
     try {
       await _firestore.collection('friend_requests').doc(requestId).update({
@@ -764,7 +838,7 @@ class ChatService {
     }
   }
 
-  // 23. CANCEL SENT REQUEST
+  // CANCEL SENT REQUEST
   Future<void> cancelFriendRequest(String requestId) async {
     try {
       await _firestore.collection('friend_requests').doc(requestId).delete();
@@ -775,7 +849,7 @@ class ChatService {
     }
   }
 
-  // 24. CHECK REQUEST STATUS
+  // CHECK REQUEST STATUS
   Future<String?> checkRequestStatus(String otherUserId) async {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return null;
@@ -819,7 +893,7 @@ class ChatService {
     }
   }
 
-  // 25. LOG CALL
+  // LOG CALL
   Future<void> logCall({
     required String otherUserId,
     required String callType,
@@ -857,7 +931,7 @@ class ChatService {
     }
   }
 
-  // 26. GET CALL HISTORY
+  // GET CALL HISTORY
   Stream<List<Map<String, dynamic>>> getCallHistory() {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return Stream.value([]);
@@ -879,11 +953,7 @@ class ChatService {
             .doc(data['receiver_id'])
             .get();
 
-        Map<String, dynamic> userData = {};
-        if (userDoc.exists) {
-          var userDocData = userDoc.data();
-          if (userDocData != null) userData = userDocData as Map<String, dynamic>;
-        }
+        Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>? ?? {};
 
         String profilePic = userData['profilePic']?.toString() ??
             userData['photoURL']?.toString() ?? '';
@@ -917,11 +987,7 @@ class ChatService {
             .doc(data['caller_id'])
             .get();
 
-        Map<String, dynamic> userData = {};
-        if (userDoc.exists) {
-          var userDocData = userDoc.data();
-          if (userDocData != null) userData = userDocData as Map<String, dynamic>;
-        }
+        Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>? ?? {};
 
         String profilePic = userData['profilePic']?.toString() ??
             userData['photoURL']?.toString() ?? '';
@@ -952,7 +1018,7 @@ class ChatService {
     });
   }
 
-  // 27. GET UNREAD MISSED CALLS COUNT
+  // GET UNREAD MISSED CALLS COUNT
   Stream<int> getUnreadMissedCallsCount() {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return Stream.value(0);
@@ -966,7 +1032,7 @@ class ChatService {
         .map((snapshot) => snapshot.docs.length);
   }
 
-  // 28. MARK MISSED CALLS AS READ
+  // MARK MISSED CALLS AS READ
   Future<void> markMissedCallsAsRead() async {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return;
@@ -990,7 +1056,7 @@ class ChatService {
     }
   }
 
-  // 29. FORMAT CALL DURATION
+  // FORMAT CALL DURATION
   String formatDuration(int seconds) {
     if (seconds < 60) {
       return '$seconds sec';
@@ -1005,7 +1071,7 @@ class ChatService {
     }
   }
 
-  // 30. GET UNREAD COUNT
+  // GET UNREAD COUNT
   Future<int> _getUnreadCount(String chatId, String userId) async {
     try {
       QuerySnapshot snapshot = await _firestore
@@ -1031,7 +1097,7 @@ class ChatService {
     }
   }
 
-  // 31. GET OTHER PARTICIPANT ID
+  // GET OTHER PARTICIPANT ID
   Future<String?> getOtherParticipantId(String chatId) async {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) return null;
@@ -1049,7 +1115,7 @@ class ChatService {
     }
   }
 
-  // 32. FORMAT TIMESTAMP
+  // FORMAT TIMESTAMP
   String _formatTimestamp(Timestamp? timestamp) {
     if (timestamp == null) return 'Just now';
 

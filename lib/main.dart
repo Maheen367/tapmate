@@ -17,13 +17,18 @@ import 'package:tapmate/theme_provider.dart';
 import 'package:tapmate/auth_provider.dart';
 import 'package:tapmate/utils/guide_manager.dart';
 import 'package:tapmate/Screen/constants/app_colors.dart';
+import 'Screen/services/cloudinary_chatservice.dart';
 import 'auth_wrapper.dart';
 import 'firebase_options.dart'; // NEW: Firebase options import
 
 void main() async { // NEW: Added 'async'
-  WidgetsFlutterBinding.ensureInitialized(); // NEW: Initialize binding
-  await Firebase.initializeApp( // NEW: Initialize Firebase
+  WidgetsFlutterBinding.ensureInitialized();
+  // Initialize Cloudinary
+  CloudinaryService().initialize();// NEW: Initialize binding
+  await Firebase.initializeApp(
+    // NEW: Initialize Firebase
     options: DefaultFirebaseOptions.currentPlatform,
+
   );
 
   runApp(
