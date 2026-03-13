@@ -15,7 +15,7 @@ class CloudinaryService {
     debugPrint('✅ Cloudinary initialized with cloud: $cloudName');
   }
 
-  // Upload voice message using direct HTTP - FIXED
+  // Upload voice message
   Future<String?> uploadVoiceMessage(File audioFile, {String? userId, String? chatId}) async {
     try {
       debugPrint('📤 Uploading to Cloudinary: ${audioFile.path}');
@@ -25,62 +25,16 @@ class CloudinaryService {
         return null;
       }
 
-      // Create multipart request
       var uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/auto/upload');
       var request = http.MultipartRequest('POST', uri);
 
-      // Add fields
       request.fields['upload_preset'] = uploadPreset;
       request.fields['folder'] = 'voice_messages';
 
-      // ✅ FIXED: Use audioFile.path (String) instead of audioFile (File)
-      request.files.add(await http.MultipartFile.fromPath(
-        'file',
-        audioFile.path,  // ← This is a String, not a File
-      ));
-
-      // Send request
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        var jsonData = jsonDecode(response.body);
-        debugPrint('✅ Upload successful: ${jsonData['secure_url']}');
-        return jsonData['secure_url'];
-      } else {
-        debugPrint('❌ Upload failed: ${response.body}');
-        return null;
-      }
-
-    } catch (e) {
-      debugPrint('❌ Unexpected error: $e');
-      return null;
-    }
-  }
-
-  // Alternative method with more options
-  Future<String?> uploadVoiceMessageWithOptions(File audioFile,
-      {String? userId, String? chatId, String? folder}) async {
-    try {
-      debugPrint('📤 Uploading to Cloudinary: ${audioFile.path}');
-
-      if (!await audioFile.exists()) {
-        debugPrint('❌ File does not exist: ${audioFile.path}');
-        return null;
-      }
-
-      var uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/auto/upload');
-      var request = http.MultipartRequest('POST', uri);
-
-      request.fields['upload_preset'] = uploadPreset;
-      request.fields['folder'] = folder ?? 'voice_messages';
-
-      // Add context if provided
       if (userId != null && chatId != null) {
         request.fields['context'] = 'userId=$userId|chatId=$chatId';
       }
 
-      // ✅ FIXED: Use audioFile.path
       request.files.add(await http.MultipartFile.fromPath(
         'file',
         audioFile.path,
@@ -97,15 +51,124 @@ class CloudinaryService {
         debugPrint('❌ Upload failed: ${response.body}');
         return null;
       }
-
     } catch (e) {
       debugPrint('❌ Unexpected error: $e');
       return null;
     }
   }
 
-  // Get optimized audio URL
-  String getOptimizedAudioUrl(String url) {
-    return url.replaceFirst('/upload/', '/upload/f_mp3/q_auto/');
+  // Upload image/video file
+  Future<Map<String, dynamic>?> uploadMediaFile(File file, {String? userId, String? chatId}) async {
+    try {
+      debugPrint('📤 Uploading media to Cloudinary: ${file.path}');
+
+      if (!await file.exists()) {
+        debugPrint('❌ File does not exist: ${file.path}');
+        return null;
+      }
+
+      // Detect file type
+      String fileExtension = file.path.split('.').last.toLowerCase();
+      bool isVideo = ['mp4', 'mov', 'avi', 'mkv', '3gp'].contains(fileExtension);
+      String resourceType = isVideo ? 'video' : 'image';
+
+      var uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/$resourceType/upload');
+      var request = http.MultipartRequest('POST', uri);
+
+      request.fields['upload_preset'] = uploadPreset;
+      request.fields['folder'] = 'chat_media';
+
+      if (userId != null && chatId != null) {
+        request.fields['context'] = 'userId=$userId|chatId=$chatId';
+      }
+
+      request.files.add(await http.MultipartFile.fromPath(
+        'file',
+        file.path,
+      ));
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        var jsonData = jsonDecode(response.body);
+        debugPrint('✅ Upload successful: ${jsonData['secure_url']}');
+        return {
+          'url': jsonData['secure_url'],
+          'type': isVideo ? 'video' : 'image',
+          'publicId': jsonData['public_id'],
+          'width': jsonData['width'],
+          'height': jsonData['height'],
+          'format': jsonData['format'],
+          'bytes': jsonData['bytes'],
+        };
+      } else {
+        debugPrint('❌ Upload failed: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ Error: $e');
+      return null;
+    }
+  }
+
+  // 🔥 NEW: Upload document file (PDF, DOC, TXT, etc.)
+  Future<Map<String, dynamic>?> uploadDocumentFile(File file, {String? userId, String? chatId}) async {
+    try {
+      debugPrint('📤 Uploading document to Cloudinary: ${file.path}');
+
+      if (!await file.exists()) {
+        debugPrint('❌ File does not exist: ${file.path}');
+        return null;
+      }
+
+      // Get file info
+      String fileName = file.path.split('/').last;
+      String fileExtension = fileName.split('.').last.toLowerCase();
+
+      var uri = Uri.parse('https://api.cloudinary.com/v1_1/$cloudName/raw/upload');
+      var request = http.MultipartRequest('POST', uri);
+
+      request.fields['upload_preset'] = uploadPreset;
+      request.fields['folder'] = 'chat_documents';
+      request.fields['public_id'] = fileName.split('.').first; // Remove extension
+
+      if (userId != null && chatId != null) {
+        request.fields['context'] = 'userId=$userId|chatId=$chatId';
+      }
+
+      request.files.add(await http.MultipartFile.fromPath(
+        'file',
+        file.path,
+      ));
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        var jsonData = jsonDecode(response.body);
+        debugPrint('✅ Document upload successful: ${jsonData['secure_url']}');
+        return {
+          'url': jsonData['secure_url'],
+          'type': 'document',
+          'fileName': fileName,
+          'fileExtension': fileExtension,
+          'publicId': jsonData['public_id'],
+          'format': jsonData['format'],
+          'bytes': jsonData['bytes'],
+        };
+      } else {
+        debugPrint('❌ Upload failed: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('❌ Error: $e');
+      return null;
+    }
+  }
+
+  // Get optimized URL
+  String getOptimizedUrl(String url) {
+    return url.replaceFirst('/upload/', '/upload/f_auto/q_auto/');
   }
 }

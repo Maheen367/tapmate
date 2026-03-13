@@ -3,12 +3,17 @@ import 'package:flutter/services.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:video_player/video_player.dart';
 import 'package:tapmate/Screen/home/other_user_profile_screen.dart';
 import 'package:tapmate/Screen/home/video_call_screen.dart';
 import 'package:tapmate/Screen/services/chat_service.dart';
 import 'package:tapmate/Screen/services/audio_player_service.dart';
+import 'package:tapmate/Screen/home/video_player_screen.dart';
+// 🔥 Agora Call Service
 import '../../auth_provider.dart';
 import '../../theme_provider.dart';
 import 'package:tapmate/Screen/constants/app_colors.dart';
@@ -16,6 +21,11 @@ import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:open_filex/open_filex.dart';
+
+import '../services/call_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? initialChatId;
@@ -44,6 +54,10 @@ class _ChatScreenState extends State<ChatScreen>
 
   final ChatService _chatService = ChatService();
   final AudioPlayerService _audioPlayerService = AudioPlayerService();
+  final ImagePicker _imagePicker = ImagePicker();
+
+  // 🔥 Agora Call Service instance
+  final AgoraCallService _callService = AgoraCallService();
 
   String _currentChatId = "";
   String _currentUserId = "";
@@ -59,6 +73,7 @@ class _ChatScreenState extends State<ChatScreen>
 
   // Add sending flag to prevent double messages
   bool _isSending = false;
+  bool _isSendingMedia = false;
 
   // Track processed message IDs to prevent duplicates
   final Set<String> _processedMessageIds = {};
@@ -121,12 +136,20 @@ class _ChatScreenState extends State<ChatScreen>
   // Check recording permissions
   Future<void> _checkPermissions() async {
     try {
-      PermissionStatus status = await Permission.microphone.request();
-      if (!status.isGranted) {
+      PermissionStatus micStatus = await Permission.microphone.request();
+      if (!micStatus.isGranted) {
         print('❌ Microphone permission denied');
       }
+
+      // Also request storage permission for Android
+      if (Platform.isAndroid) {
+        PermissionStatus storageStatus = await Permission.storage.request();
+        if (!storageStatus.isGranted) {
+          print('❌ Storage permission denied');
+        }
+      }
     } catch (e) {
-      debugPrint('Error checking recording permissions: $e');
+      debugPrint('Error checking permissions: $e');
     }
   }
 
@@ -169,6 +192,9 @@ class _ChatScreenState extends State<ChatScreen>
     _waveformTimer?.cancel();
     _audioRecorder.dispose();
     _audioPlayerService.dispose();
+
+    // 🔥 Dispose call service
+    _callService.dispose();
 
     _chatService.updateOnlineStatus(false);
     super.dispose();
@@ -474,6 +500,507 @@ class _ChatScreenState extends State<ChatScreen>
     }
   }
 
+  // Pick image from gallery
+  Future<void> _pickImage() async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 80,
+      );
+
+      if (pickedFile != null && mounted) {
+        setState(() => _isSendingMedia = true);
+
+        File imageFile = File(pickedFile.path);
+        await _chatService.sendImageMessage(_currentChatId, imageFile);
+
+        setState(() => _isSendingMedia = false);
+        _scrollToBottom();
+      }
+    } catch (e) {
+      setState(() => _isSendingMedia = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to pick image: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  // Pick video from gallery
+  Future<void> _pickVideo() async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: const Duration(minutes: 2),
+      );
+
+      if (pickedFile != null && mounted) {
+        setState(() => _isSendingMedia = true);
+
+        File videoFile = File(pickedFile.path);
+        await _chatService.sendVideoMessage(_currentChatId, videoFile);
+
+        setState(() => _isSendingMedia = false);
+        _scrollToBottom();
+      }
+    } catch (e) {
+      setState(() => _isSendingMedia = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to pick video: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  // Take photo with camera
+  Future<void> _takePhoto() async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 80,
+      );
+
+      if (pickedFile != null && mounted) {
+        setState(() => _isSendingMedia = true);
+
+        File imageFile = File(pickedFile.path);
+        await _chatService.sendImageMessage(_currentChatId, imageFile);
+
+        setState(() => _isSendingMedia = false);
+        _scrollToBottom();
+      }
+    } catch (e) {
+      setState(() => _isSendingMedia = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to take photo: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  // Record video with camera
+  Future<void> _recordVideo() async {
+    try {
+      final XFile? pickedFile = await _imagePicker.pickVideo(
+        source: ImageSource.camera,
+        maxDuration: const Duration(minutes: 1),
+      );
+
+      if (pickedFile != null && mounted) {
+        setState(() => _isSendingMedia = true);
+
+        File videoFile = File(pickedFile.path);
+        await _chatService.sendVideoMessage(_currentChatId, videoFile);
+
+        setState(() => _isSendingMedia = false);
+        _scrollToBottom();
+      }
+    } catch (e) {
+      setState(() => _isSendingMedia = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to record video: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+// 🔥 ULTIMATE FIXED: Document picker with guaranteed working
+  Future<void> _pickDocument() async {
+    try {
+      setState(() => _isSendingMedia = true);
+
+      FilePickerResult? result;
+      String? errorMessage;
+
+      // METHOD 1: withData true (Android 11+)
+      try {
+        print('📁 Trying method 1 (withData)...');
+        result = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: [
+            'pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx',
+            'ppt', 'pptx', 'zip', 'rar', 'jpg', 'jpeg', 'png'
+          ],
+          allowMultiple: false,
+          withData: true,
+        );
+        if (result != null) print('✅ Method 1 succeeded');
+      } catch (e) {
+        errorMessage = e.toString();
+        print('❌ Method 1 failed: $e');
+      }
+
+      // METHOD 2: Without withData
+      if (result == null) {
+        try {
+          print('📁 Trying method 2 (without withData)...');
+          result = await FilePicker.platform.pickFiles(
+            type: FileType.custom,
+            allowedExtensions: [
+              'pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx',
+              'ppt', 'pptx', 'zip', 'rar'
+            ],
+            allowMultiple: false,
+          );
+          if (result != null) print('✅ Method 2 succeeded');
+        } catch (e) {
+          print('❌ Method 2 failed: $e');
+        }
+      }
+
+      // METHOD 3: Any file type
+      if (result == null) {
+        try {
+          print('📁 Trying method 3 (any file)...');
+          result = await FilePicker.platform.pickFiles(
+            type: FileType.any,
+            allowMultiple: false,
+          );
+          if (result != null) print('✅ Method 3 succeeded');
+        } catch (e) {
+          print('❌ Method 3 failed: $e');
+        }
+      }
+
+      // METHOD 4: Image picker as fallback
+      if (result == null) {
+        try {
+          print('📁 Trying method 4 (image picker)...');
+          final XFile? pickedFile = await _imagePicker.pickMedia();
+          if (pickedFile != null) {
+            final bytes = await pickedFile.readAsBytes();
+            final tempDir = await getTemporaryDirectory();
+            final tempFile = File('${tempDir.path}/${pickedFile.name}');
+            await tempFile.writeAsBytes(bytes);
+
+            await _chatService.sendDocumentMessage(_currentChatId, tempFile);
+
+            try { await tempFile.delete(); } catch (_) {}
+
+            if (mounted) {
+              setState(() => _isSendingMedia = false);
+              _scrollToBottom();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('📄 ${pickedFile.name} sent'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            }
+            return;
+          }
+        } catch (e) {
+          print('❌ Method 4 failed: $e');
+        }
+      }
+
+      if (result != null && mounted) {
+        PlatformFile file = result.files.first;
+
+        // If we have bytes (Android 11+)
+        if (file.bytes != null) {
+          print('✅ Using bytes method');
+          final tempDir = await getTemporaryDirectory();
+          final tempFile = File('${tempDir.path}/${file.name}');
+          await tempFile.writeAsBytes(file.bytes!);
+
+          // Verify file was created
+          if (await tempFile.exists()) {
+            print('✅ Temp file created: ${tempFile.path}');
+            print('📏 Size: ${await tempFile.length()} bytes');
+
+            await _chatService.sendDocumentMessage(_currentChatId, tempFile);
+            try { await tempFile.delete(); } catch (_) {}
+          }
+        }
+        // If we have path
+        else if (file.path != null) {
+          print('✅ Using path method');
+          try {
+            final bytes = await File(file.path!).readAsBytes();
+            final tempDir = await getTemporaryDirectory();
+            final tempFile = File('${tempDir.path}/${file.name}');
+            await tempFile.writeAsBytes(bytes);
+            await _chatService.sendDocumentMessage(_currentChatId, tempFile);
+            try { await tempFile.delete(); } catch (_) {}
+          } catch (e) {
+            print('❌ Error reading file: $e');
+            throw Exception('Cannot read file');
+          }
+        }
+
+        if (mounted) {
+          setState(() => _isSendingMedia = false);
+          _scrollToBottom();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('📄 ${file.name} sent'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        setState(() => _isSendingMedia = false);
+
+        // Show specific error message
+        String userMessage = 'No file selected';
+        if (errorMessage != null) {
+          if (errorMessage.contains('permission')) {
+            userMessage = 'Storage permission denied';
+          } else if (errorMessage.contains('cancel')) {
+            userMessage = 'Selection cancelled';
+          }
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(userMessage),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isSendingMedia = false);
+      print('❌ Document pick error: $e');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  // 🔥 NEW: Show permission dialog
+  void _showPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Storage Permission Required'),
+        content: const Text(
+            'Please grant storage permission to pick documents. '
+                'Go to app settings to enable permission.'
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              openAppSettings();
+            },
+            child: const Text('Open Settings'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Open document
+  Future<void> _openDocument(String documentUrl, String fileName) async {
+    try {
+      // Show loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      // Download document
+      File? documentFile = await _chatService.downloadDocumentFile(documentUrl, fileName);
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading
+
+      if (documentFile == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not download document'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Check if file exists
+      if (!await documentFile.exists()) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('File not found'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Show options to open/share
+      _showDocumentOptions(documentFile);
+
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  // 🔥 UPDATED: Show document options with working features
+  void _showDocumentOptions(File documentFile) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.share, color: AppColors.primary),
+              title: const Text('Share'),
+              onTap: () async {
+                Navigator.pop(context);
+                await _shareDocument(documentFile);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.open_in_browser, color: AppColors.primary),
+              title: const Text('Open with...'),
+              onTap: () {
+                Navigator.pop(context);
+                _openDocumentWith(documentFile);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // 🔥 NEW: Share document
+  Future<void> _shareDocument(File documentFile) async {
+    try {
+      final XFile file = XFile(documentFile.path);
+      await Share.shareXFiles(
+        [file],
+        text: 'Check out this document',
+      );
+    } catch (e) {
+      debugPrint('❌ Error sharing: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error sharing document'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // 🔥 NEW: Open document with external app
+  Future<void> _openDocumentWith(File documentFile) async {
+    try {
+      final result = await OpenFilex.open(documentFile.path);
+
+      if (result.type != ResultType.done) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Cannot open this file type'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error opening: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening file'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Helper method for file icons
+  String _getFileIcon(String extension) {
+    switch (extension.toLowerCase()) {
+      case 'pdf':
+        return '📕';
+      case 'doc':
+      case 'docx':
+        return '📘';
+      case 'xls':
+      case 'xlsx':
+        return '📗';
+      case 'ppt':
+      case 'pptx':
+        return '📙';
+      case 'txt':
+        return '📄';
+      case 'zip':
+      case 'rar':
+        return '🗜️';
+      default:
+        return '📎';
+    }
+  }
+
+  // Show image preview
+  void _showImagePreview(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(10),
+        child: Stack(
+          children: [
+            InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: Image.network(
+                imageUrl,
+                fit: BoxFit.contain,
+              ),
+            ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Show video player
+  void _showVideoPlayer(String videoUrl) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => VideoPlayerScreen(videoUrl: videoUrl),
+      ),
+    );
+  }
+
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
@@ -674,70 +1201,51 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
+
+// 🔥 UPDATED: Video call method with Agora
   void _startVideoCall() async {
+    String channelName = 'call_${_currentChatId}_${DateTime.now().millisecondsSinceEpoch}';
+
+    // Get user avatar
+    String userAvatar = _currentChatUser['profilePic'] ?? _currentChatUser['avatar'] ?? '';
+
+    await _callService.startVideoCall(
+      context: context,
+      channelName: channelName,
+      targetUserId: _currentUserId,
+      targetUserName: _currentChatUser['name'] ?? 'User',
+      targetUserAvatar: userAvatar,
+    );
+
+    // Call log in Firestore
     await _chatService.logCall(
       otherUserId: _currentUserId,
       callType: 'video',
       callStatus: 'completed',
-      duration: 120,
-    );
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => VideoCallScreen(
-          userName: _currentChatUser['name'] ?? 'User',
-          userAvatar: _currentChatUser['avatar'] ?? '👤',
-        ),
-      ),
+      duration: 0,
     );
   }
 
+// 🔥 UPDATED: Voice call method with Agora
   void _startVoiceCall() async {
-    showDialog(
+    String channelName = 'call_${_currentChatId}_${DateTime.now().millisecondsSinceEpoch}';
+
+    // Get user avatar
+    String userAvatar = _currentChatUser['profilePic'] ?? _currentChatUser['avatar'] ?? '';
+
+    await _callService.startVoiceCall(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Voice Call'),
-        content: Text('Calling ${_currentChatUser['name'] ?? 'User'}...'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              _chatService.logCall(
-                otherUserId: _currentUserId,
-                callType: 'voice',
-                callStatus: 'missed',
-              );
-              Navigator.pop(context);
-            },
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _chatService.logCall(
-                otherUserId: _currentUserId,
-                callType: 'voice',
-                callStatus: 'completed',
-                duration: 180,
-              );
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                        'Connected to ${_currentChatUser['name'] ?? 'User'}'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-            child: const Text(
-              'Answer',
-              style: TextStyle(color: AppColors.lightSurface),
-            ),
-          ),
-        ],
-      ),
+      channelName: channelName,
+      targetUserId: _currentUserId,
+      targetUserName: _currentChatUser['name'] ?? 'User',
+      targetUserAvatar: userAvatar,
+    );
+
+    await _chatService.logCall(
+      otherUserId: _currentUserId,
+      callType: 'voice',
+      callStatus: 'completed',
+      duration: 0,
     );
   }
 
@@ -1123,64 +1631,42 @@ class _ChatScreenState extends State<ChatScreen>
     }
   }
 
+  // 🔥 UPDATED: Call user method
   void _callUser(String userId, String userName, String callType) async {
+    String channelName = 'call_${_currentChatId}_${DateTime.now().millisecondsSinceEpoch}';
+
+    // Get user avatar
+    String userAvatar = _currentChatUser['profilePic'] ?? _currentChatUser['avatar'] ?? '';
+
     if (callType == 'video') {
+      await _callService.startVideoCall(
+        context: context,
+        channelName: channelName,
+        targetUserId: userId,
+        targetUserName: userName,
+        targetUserAvatar: userAvatar,
+      );
+
       await _chatService.logCall(
         otherUserId: userId,
         callType: 'video',
         callStatus: 'completed',
-        duration: 120,
-      );
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => VideoCallScreen(
-            userName: userName,
-            userAvatar: '👤',
-          ),
-        ),
+        duration: 0,
       );
     } else {
-      showDialog(
+      await _callService.startVoiceCall(
         context: context,
-        builder: (context) => AlertDialog(
-          title: Text('Voice Call'),
-          content: Text('Calling $userName...'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _chatService.logCall(
-                  otherUserId: userId,
-                  callType: 'voice',
-                  callStatus: 'missed',
-                );
-                Navigator.pop(context);
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _chatService.logCall(
-                  otherUserId: userId,
-                  callType: 'voice',
-                  callStatus: 'completed',
-                  duration: 180,
-                );
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Connected to $userName'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-              child: const Text('Answer'),
-            ),
-          ],
-        ),
+        channelName: channelName,
+        targetUserId: userId,
+        targetUserName: userName,
+        targetUserAvatar: userAvatar,
+      );
+
+      await _chatService.logCall(
+        otherUserId: userId,
+        callType: 'voice',
+        callStatus: 'completed',
+        duration: 0,
       );
     }
   }
@@ -1985,8 +2471,7 @@ class _ChatScreenState extends State<ChatScreen>
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color:
-                    isDarkMode ? AppColors.lightSurface : AppColors.accent,
+                    color: isDarkMode ? AppColors.lightSurface : AppColors.accent,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -1995,6 +2480,15 @@ class _ChatScreenState extends State<ChatScreen>
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.pushNamed(context, '/search'),
+                  icon: const Icon(Icons.search),
+                  label: const Text('Find People'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
                   ),
                 ),
               ],
@@ -2023,95 +2517,120 @@ class _ChatScreenState extends State<ChatScreen>
                   ),
                 ],
               ),
-              child: Row(
+              child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: AppColors.primary.withOpacity(0.2),
-                    backgroundImage: request['profilePic'] != null
-                        ? NetworkImage(request['profilePic'])
-                        : null,
-                    child: request['profilePic'] == null
-                        ? Text(
-                      request['avatar'] ?? '👤',
-                      style: const TextStyle(fontSize: 24),
-                    )
-                        : null,
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          request['name'] ?? 'Unknown',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: isDarkMode
-                                ? AppColors.lightSurface
-                                : AppColors.accent,
-                          ),
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => _viewUserProfile(request['sender_id']),
+                        child: CircleAvatar(
+                          radius: 30,
+                          backgroundColor: AppColors.primary.withOpacity(0.2),
+                          backgroundImage: request['profilePic'] != null
+                              ? NetworkImage(request['profilePic'])
+                              : null,
+                          child: request['profilePic'] == null
+                              ? Text(
+                            request['avatar'] ?? '👤',
+                            style: const TextStyle(fontSize: 24),
+                          )
+                              : null,
                         ),
-                        if (request['username'] != null)
-                          Text(
-                            '@${request['username']}',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: isDarkMode
-                                  ? Colors.grey[400]!
-                                  : Colors.grey[600]!,
-                            ),
-                          ),
-                        if (request['bio'] != null && request['bio'].isNotEmpty)
-                          Text(
-                            request['bio'],
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDarkMode
-                                  ? Colors.grey[500]!
-                                  : Colors.grey[700]!,
-                            ),
-                          ),
-                        const SizedBox(height: 8),
-                        Row(
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: () => _acceptRequest(
-                                  request['request_id'],
-                                  request['sender_id'],
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    request['name'] ?? 'Unknown',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDarkMode
+                                          ? AppColors.lightSurface
+                                          : AppColors.accent,
+                                    ),
+                                  ),
                                 ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  foregroundColor: Colors.white,
-                                  padding:
-                                  const EdgeInsets.symmetric(vertical: 8),
-                                ),
-                                child: const Text('Accept'),
-                              ),
+                                if (request['timestamp'] != null)
+                                  Text(
+                                    _formatRequestTime(request['timestamp']),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: isDarkMode ? Colors.grey[500]! : Colors.grey[600]!,
+                                    ),
+                                  ),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => _rejectRequest(
-                                  request['request_id'],
+                            if (request['username'] != null)
+                              Text(
+                                '@${request['username']}',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: isDarkMode
+                                      ? Colors.grey[400]!
+                                      : Colors.grey[600]!,
                                 ),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: Colors.red,
-                                  side: const BorderSide(color: Colors.red),
-                                  padding:
-                                  const EdgeInsets.symmetric(vertical: 8),
-                                ),
-                                child: const Text('Reject'),
                               ),
-                            ),
+                            if (request['bio'] != null && request['bio'].isNotEmpty)
+                              Text(
+                                request['bio'],
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDarkMode
+                                      ? Colors.grey[500]!
+                                      : Colors.grey[700]!,
+                                ),
+                              ),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => _acceptRequest(
+                            request['request_id'],
+                            request['sender_id'],
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text('Accept'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => _rejectRequest(
+                            request['request_id'],
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text('Reject'),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -2120,6 +2639,25 @@ class _ChatScreenState extends State<ChatScreen>
         );
       },
     );
+  }
+
+// Helper method for request time
+  String _formatRequestTime(Timestamp timestamp) {
+    final date = timestamp.toDate();
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays > 7) {
+      return '${date.day}/${date.month}';
+    } else if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
   }
 
   Widget _buildCallsTab(bool isDarkMode) {
@@ -2449,7 +2987,7 @@ class _ChatScreenState extends State<ChatScreen>
           ),
         ),
 
-        // Message input - FIXED with fixed heights
+        // Message input with fixed heights
         _buildMessageInput(isDarkMode),
 
         if (_isEmojiPickerVisible)
@@ -2468,7 +3006,7 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
-  // ✅ Message Bubble Builder - YAHAN PEHLE MISSING THA
+  // Message Bubble Builder
   Widget _buildMessageBubble(
       Map<String, dynamic> message,
       bool isSent,
@@ -2537,7 +3075,7 @@ class _ChatScreenState extends State<ChatScreen>
       );
     }
 
-    // Voice message bubble - UPDATED with onTap
+    // Voice message bubble
     if (message['type'] == 'voice') {
       return Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -2643,6 +3181,304 @@ class _ChatScreenState extends State<ChatScreen>
       );
     }
 
+    // Media message bubble (image/video)
+    if (message['type'] == 'media') {
+      String mediaType = message['mediaType'] ?? 'image';
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisAlignment: isSent ? MainAxisAlignment.end : MainAxisAlignment.start,
+          children: [
+            if (!isSent)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: AppColors.primary.withOpacity(0.2),
+                  backgroundImage: _currentChatUser['profilePic'] != null
+                      ? NetworkImage(_currentChatUser['profilePic'])
+                      : null,
+                  child: _currentChatUser['profilePic'] == null
+                      ? Text(
+                    _currentChatUser['avatar']?.toString() ?? '👤',
+                    style: const TextStyle(fontSize: 16),
+                  )
+                      : null,
+                ),
+              ),
+            Flexible(
+              child: GestureDetector(
+                onTap: () {
+                  if (mediaType == 'image') {
+                    _showImagePreview(message['mediaUrl']);
+                  } else {
+                    _showVideoPlayer(message['mediaUrl']);
+                  }
+                },
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSent
+                        ? AppColors.primary.withOpacity(0.9)
+                        : (isDarkMode ? const Color(0xFF2C2C2C) : Colors.grey[200]!),
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(18),
+                      topRight: const Radius.circular(18),
+                      bottomLeft: Radius.circular(isSent ? 18 : 4),
+                      bottomRight: Radius.circular(isSent ? 4 : 18),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Media preview
+                      ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(18),
+                          topRight: Radius.circular(18),
+                        ),
+                        child: mediaType == 'image'
+                            ? Image.network(
+                          message['mediaUrl'],
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              height: 200,
+                              color: Colors.grey[300],
+                              child: const Center(
+                                child: Icon(Icons.broken_image, size: 50),
+                              ),
+                            );
+                          },
+                        )
+                            : Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Image.network(
+                              message['mediaUrl'],
+                              height: 200,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  height: 200,
+                                  color: Colors.grey[300],
+                                );
+                              },
+                            ),
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.play_arrow,
+                                color: Colors.white,
+                                size: 30,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              mediaType == 'image' ? '📷 Image' : '🎥 Video',
+                              style: TextStyle(
+                                color: isSent ? Colors.white : AppColors.textMain,
+                                fontSize: 12,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  _formatMessageTime(message['timestamp']),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isSent
+                                        ? Colors.white.withOpacity(0.7)
+                                        : Colors.grey[600],
+                                  ),
+                                ),
+                                if (isSent) ...[
+                                  const SizedBox(width: 4),
+                                  if (message['is_read'] == true)
+                                    const Icon(Icons.done_all, size: 14, color: Colors.blue)
+                                  else if (message['is_delivered'] == true)
+                                    Icon(Icons.done_all, size: 14, color: isSent
+                                        ? Colors.white.withOpacity(0.7)
+                                        : Colors.grey)
+                                  else
+                                    Icon(Icons.done, size: 14, color: isSent
+                                        ? Colors.white.withOpacity(0.7)
+                                        : Colors.grey),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Document message bubble
+    if (message['type'] == 'document') {
+      String fileName = message['documentName'] ?? 'Document';
+      String fileExtension = message['documentExtension'] ?? 'file';
+      String fileIcon = _getFileIcon(fileExtension);
+      int fileSize = message['documentSize'] ?? 0;
+      String sizeText = fileSize > 0 ? '${(fileSize / 1024).toStringAsFixed(1)} KB' : '';
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisAlignment: isSent ? MainAxisAlignment.end : MainAxisAlignment.start,
+          children: [
+            if (!isSent)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: AppColors.primary.withOpacity(0.2),
+                  backgroundImage: _currentChatUser['profilePic'] != null
+                      ? NetworkImage(_currentChatUser['profilePic'])
+                      : null,
+                  child: _currentChatUser['profilePic'] == null
+                      ? Text(
+                    _currentChatUser['avatar']?.toString() ?? '👤',
+                    style: const TextStyle(fontSize: 16),
+                  )
+                      : null,
+                ),
+              ),
+            Flexible(
+              child: GestureDetector(
+                onTap: () => _openDocument(message['documentUrl'], fileName),
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.7,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isSent
+                        ? AppColors.primary.withOpacity(0.9)
+                        : (isDarkMode ? const Color(0xFF2C2C2C) : Colors.grey[200]!),
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(18),
+                      topRight: const Radius.circular(18),
+                      bottomLeft: Radius.circular(isSent ? 18 : 4),
+                      bottomRight: Radius.circular(isSent ? 4 : 18),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            fileIcon,
+                            style: const TextStyle(fontSize: 24),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  fileName.length > 20
+                                      ? '${fileName.substring(0, 20)}...'
+                                      : fileName,
+                                  style: TextStyle(
+                                    color: isSent ? Colors.white : AppColors.textMain,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                if (sizeText.isNotEmpty)
+                                  Text(
+                                    sizeText,
+                                    style: TextStyle(
+                                      color: isSent
+                                          ? Colors.white.withOpacity(0.7)
+                                          : Colors.grey[600],
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '📄 Document',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isSent
+                                  ? Colors.white.withOpacity(0.7)
+                                  : Colors.grey[600],
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Text(
+                                _formatMessageTime(message['timestamp']),
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isSent
+                                      ? Colors.white.withOpacity(0.7)
+                                      : Colors.grey[600],
+                                ),
+                              ),
+                              if (isSent) ...[
+                                const SizedBox(width: 4),
+                                if (message['is_read'] == true)
+                                  const Icon(Icons.done_all, size: 14, color: Colors.blue)
+                                else if (message['is_delivered'] == true)
+                                  Icon(Icons.done_all, size: 14, color: isSent
+                                      ? Colors.white.withOpacity(0.7)
+                                      : Colors.grey)
+                                else
+                                  Icon(Icons.done, size: 14, color: isSent
+                                      ? Colors.white.withOpacity(0.7)
+                                      : Colors.grey),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     // Regular message bubble
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -2685,7 +3521,7 @@ class _ChatScreenState extends State<ChatScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (message['type'] != 'voice') ...[
+                        if (message['type'] != 'voice' && message['type'] != 'media' && message['type'] != 'document') ...[
                           ListTile(
                             leading: Icon(Icons.content_copy,
                                 color: AppColors.primary),
@@ -3037,7 +3873,7 @@ class _ChatScreenState extends State<ChatScreen>
       );
     }
 
-    if (_isUploadingVoice) {
+    if (_isUploadingVoice || _isSendingMedia) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
@@ -3056,9 +3892,9 @@ class _ChatScreenState extends State<ChatScreen>
               ),
             ),
             const SizedBox(width: 12),
-            const Text(
-              'Sending voice message...',
-              style: TextStyle(fontSize: 14),
+            Text(
+              _isUploadingVoice ? 'Sending voice message...' : 'Sending media...',
+              style: const TextStyle(fontSize: 14),
             ),
           ],
         ),
@@ -3180,6 +4016,7 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
+  // UPDATED: Attachment options with all media choices
   void _showAttachmentOptions() {
     showModalBottomSheet(
       context: context,
@@ -3192,16 +4029,11 @@ class _ChatScreenState extends State<ChatScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: Icon(Icons.photo, color: AppColors.primary),
-              title: const Text('Photo & Video'),
+              leading: Icon(Icons.photo_library, color: AppColors.primary),
+              title: const Text('Gallery'),
               onTap: () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Photo attachment coming soon'),
-                    backgroundColor: Colors.blue,
-                  ),
-                );
+                _showMediaPickerOptions();
               },
             ),
             ListTile(
@@ -3209,25 +4041,92 @@ class _ChatScreenState extends State<ChatScreen>
               title: const Text('Camera'),
               onTap: () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Camera feature coming soon'),
-                    backgroundColor: Colors.blue,
-                  ),
-                );
+                _showCameraOptions();
               },
             ),
+            ListTile(
+              leading: Icon(Icons.mic, color: AppColors.primary),
+              title: const Text('Voice Message'),
+              onTap: () {
+                Navigator.pop(context);
+                _startRecording();
+              },
+            ),
+            // Document option with actual functionality
             ListTile(
               leading: Icon(Icons.insert_drive_file, color: AppColors.primary),
               title: const Text('Document'),
               onTap: () {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Document attachment coming soon'),
-                    backgroundColor: Colors.blue,
-                  ),
-                );
+                _pickDocument();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Media picker options
+  void _showMediaPickerOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.image, color: AppColors.primary),
+              title: const Text('Image'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.videocam, color: AppColors.primary),
+              title: const Text('Video'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickVideo();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Camera options
+  void _showCameraOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.camera, color: AppColors.primary),
+              title: const Text('Take Photo'),
+              onTap: () {
+                Navigator.pop(context);
+                _takePhoto();
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.videocam, color: AppColors.primary),
+              title: const Text('Record Video'),
+              onTap: () {
+                Navigator.pop(context);
+                _recordVideo();
               },
             ),
           ],

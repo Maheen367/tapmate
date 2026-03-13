@@ -33,6 +33,11 @@ dependencies:
   permission_handler: ^11.0.1
   audioplayers: ^5.2.1
   wave: ^0.2.2  # For voice waveform
+  video_player: ^2.8.1
+  share_plus: ^7.2.0        # For sharing files
+  open_filex: ^4.3.2         # For opening files with external apps
+  agora_rtc_engine: ^6.3.0
+
 
   # Other Packages
   cupertino_icons: ^1.0.8

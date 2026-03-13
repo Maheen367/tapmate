@@ -5,7 +5,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
-import 'package:tapmate/Screen/services/cloudinary_service.dart'; // NEW IMPORT
+import 'package:tapmate/Screen/services/cloudinary_chatservice.dart';
 
 class ChatService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -177,6 +177,27 @@ class ChatService {
           });
         }
 
+        // Add media-specific fields (image/video)
+        if (data['type'] == 'media') {
+          messageMap.addAll({
+            'mediaUrl': data['mediaUrl']?.toString() ?? '',
+            'mediaType': data['mediaType']?.toString() ?? 'image',
+            'mediaWidth': data['mediaWidth'] as int? ?? 0,
+            'mediaHeight': data['mediaHeight'] as int? ?? 0,
+            'fileSize': data['fileSize'] as int? ?? 0,
+          });
+        }
+
+        // 🔥 NEW: Add document-specific fields
+        if (data['type'] == 'document') {
+          messageMap.addAll({
+            'documentUrl': data['documentUrl']?.toString() ?? '',
+            'documentName': data['documentName']?.toString() ?? 'Document',
+            'documentExtension': data['documentExtension']?.toString() ?? 'file',
+            'documentSize': data['documentSize'] as int? ?? 0,
+          });
+        }
+
         return messageMap;
       }).toList();
 
@@ -242,7 +263,7 @@ class ChatService {
     }
   }
 
-  // SEND VOICE MESSAGE - UPDATED WITH CLOUDINARY
+  // SEND VOICE MESSAGE
   Future<void> sendVoiceMessage(
       String chatId,
       File audioFile, {
@@ -329,7 +350,282 @@ class ChatService {
     }
   }
 
-  // NEW: Download voice message from Cloudinary
+  // SEND IMAGE MESSAGE
+  Future<void> sendImageMessage(String chatId, File imageFile) async {
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) throw Exception('No user logged in');
+
+    try {
+      String? otherUserId = await getOtherParticipantId(chatId);
+      if (otherUserId == null) throw Exception('Other user not found');
+
+      print('📤 Uploading image to Cloudinary: ${imageFile.path}');
+      print('📏 File size: ${await imageFile.length()} bytes');
+
+      // Upload to Cloudinary
+      var result = await CloudinaryService().uploadMediaFile(
+        imageFile,
+        userId: currentUser.uid,
+        chatId: chatId,
+      );
+
+      if (result == null) {
+        throw Exception('Failed to upload image');
+      }
+
+      print('✅ Cloudinary URL: ${result['url']}');
+
+      // Check if other user is online
+      DocumentSnapshot userDoc = await _firestore
+          .collection('users')
+          .doc(otherUserId)
+          .get();
+
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>? ?? {};
+      bool isOtherOnline = userData['isOnline'] as bool? ?? false;
+
+      // Create message in Firestore
+      Map<String, dynamic> messageData = {
+        'senderId': currentUser.uid,
+        'message': '📷 Image',
+        'mediaUrl': result['url'],
+        'mediaType': 'image',
+        'mediaWidth': result['width'],
+        'mediaHeight': result['height'],
+        'timestamp': FieldValue.serverTimestamp(),
+        'type': 'media',
+        'readBy': [currentUser.uid],
+        'deliveredTo': isOtherOnline ? [otherUserId] : [],
+        'is_deleted': false,
+        'is_forwarded': false,
+        'fileSize': result['bytes'],
+        'cloudName': 'dvxejhpau',
+      };
+
+      DocumentReference msgRef = await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .add(messageData);
+
+      print('✅ Image message added to chat: ${msgRef.id}');
+
+      // Update chat last message
+      await _firestore.collection('chats').doc(chatId).update({
+        'lastMessage': '📷 Image',
+        'lastMessageTime': FieldValue.serverTimestamp(),
+        'lastMessageSender': currentUser.uid,
+        'lastMessageType': 'image',
+      });
+
+      // Delete temp file after successful upload
+      try {
+        if (await imageFile.exists()) {
+          await imageFile.delete();
+          print('✅ Temp file deleted');
+        }
+      } catch (e) {
+        print('⚠️ Error deleting temp file: $e');
+      }
+    } catch (e) {
+      print('❌ Error sending image: $e');
+      rethrow;
+    }
+  }
+
+  // SEND VIDEO MESSAGE
+  Future<void> sendVideoMessage(String chatId, File videoFile) async {
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) throw Exception('No user logged in');
+
+    try {
+      String? otherUserId = await getOtherParticipantId(chatId);
+      if (otherUserId == null) throw Exception('Other user not found');
+
+      print('📤 Uploading video to Cloudinary: ${videoFile.path}');
+      print('📏 File size: ${await videoFile.length()} bytes');
+
+      // Upload to Cloudinary
+      var result = await CloudinaryService().uploadMediaFile(
+        videoFile,
+        userId: currentUser.uid,
+        chatId: chatId,
+      );
+
+      if (result == null) {
+        throw Exception('Failed to upload video');
+      }
+
+      print('✅ Cloudinary URL: ${result['url']}');
+
+      // Check if other user is online
+      DocumentSnapshot userDoc = await _firestore
+          .collection('users')
+          .doc(otherUserId)
+          .get();
+
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>? ?? {};
+      bool isOtherOnline = userData['isOnline'] as bool? ?? false;
+
+      // Create message in Firestore
+      Map<String, dynamic> messageData = {
+        'senderId': currentUser.uid,
+        'message': '🎥 Video',
+        'mediaUrl': result['url'],
+        'mediaType': 'video',
+        'mediaWidth': result['width'],
+        'mediaHeight': result['height'],
+        'timestamp': FieldValue.serverTimestamp(),
+        'type': 'media',
+        'readBy': [currentUser.uid],
+        'deliveredTo': isOtherOnline ? [otherUserId] : [],
+        'is_deleted': false,
+        'is_forwarded': false,
+        'fileSize': result['bytes'],
+        'cloudName': 'dvxejhpau',
+      };
+
+      DocumentReference msgRef = await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .add(messageData);
+
+      print('✅ Video message added to chat: ${msgRef.id}');
+
+      // Update chat last message
+      await _firestore.collection('chats').doc(chatId).update({
+        'lastMessage': '🎥 Video',
+        'lastMessageTime': FieldValue.serverTimestamp(),
+        'lastMessageSender': currentUser.uid,
+        'lastMessageType': 'video',
+      });
+
+      // Delete temp file after successful upload
+      try {
+        if (await videoFile.exists()) {
+          await videoFile.delete();
+          print('✅ Temp file deleted');
+        }
+      } catch (e) {
+        print('⚠️ Error deleting temp file: $e');
+      }
+    } catch (e) {
+      print('❌ Error sending video: $e');
+      rethrow;
+    }
+  }
+
+  // 🔥 NEW: SEND DOCUMENT MESSAGE
+  Future<void> sendDocumentMessage(String chatId, File documentFile) async {
+    User? currentUser = _auth.currentUser;
+    if (currentUser == null) throw Exception('No user logged in');
+
+    try {
+      String? otherUserId = await getOtherParticipantId(chatId);
+      if (otherUserId == null) throw Exception('Other user not found');
+
+      print('📤 Uploading document to Cloudinary: ${documentFile.path}');
+      print('📏 File size: ${await documentFile.length()} bytes');
+
+      // Upload to Cloudinary
+      var result = await CloudinaryService().uploadDocumentFile(
+        documentFile,
+        userId: currentUser.uid,
+        chatId: chatId,
+      );
+
+      if (result == null) {
+        throw Exception('Failed to upload document');
+      }
+
+      print('✅ Cloudinary URL: ${result['url']}');
+
+      // Check if other user is online
+      DocumentSnapshot userDoc = await _firestore
+          .collection('users')
+          .doc(otherUserId)
+          .get();
+
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>? ?? {};
+      bool isOtherOnline = userData['isOnline'] as bool? ?? false;
+
+      // Get file icon based on extension
+      String fileIcon = _getFileIcon(result['fileExtension']);
+
+      // Create message in Firestore
+      Map<String, dynamic> messageData = {
+        'senderId': currentUser.uid,
+        'message': '$fileIcon ${result['fileName']}',
+        'documentUrl': result['url'],
+        'documentName': result['fileName'],
+        'documentExtension': result['fileExtension'],
+        'documentSize': result['bytes'],
+        'timestamp': FieldValue.serverTimestamp(),
+        'type': 'document',
+        'readBy': [currentUser.uid],
+        'deliveredTo': isOtherOnline ? [otherUserId] : [],
+        'is_deleted': false,
+        'is_forwarded': false,
+        'cloudName': 'dvxejhpau',
+      };
+
+      DocumentReference msgRef = await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .add(messageData);
+
+      print('✅ Document message added to chat: ${msgRef.id}');
+
+      // Update chat last message
+      await _firestore.collection('chats').doc(chatId).update({
+        'lastMessage': '📄 Document',
+        'lastMessageTime': FieldValue.serverTimestamp(),
+        'lastMessageSender': currentUser.uid,
+        'lastMessageType': 'document',
+      });
+
+      // Delete temp file after successful upload
+      try {
+        if (await documentFile.exists()) {
+          await documentFile.delete();
+          print('✅ Temp file deleted');
+        }
+      } catch (e) {
+        print('⚠️ Error deleting temp file: $e');
+      }
+    } catch (e) {
+      print('❌ Error sending document: $e');
+      rethrow;
+    }
+  }
+
+  // Helper method to get file icon
+  String _getFileIcon(String extension) {
+    switch (extension.toLowerCase()) {
+      case 'pdf':
+        return '📕';
+      case 'doc':
+      case 'docx':
+        return '📘';
+      case 'xls':
+      case 'xlsx':
+        return '📗';
+      case 'ppt':
+      case 'pptx':
+        return '📙';
+      case 'txt':
+        return '📄';
+      case 'zip':
+      case 'rar':
+        return '🗜️';
+      default:
+        return '📎';
+    }
+  }
+
+  // DOWNLOAD VOICE MESSAGE FROM CLOUDINARY
   Future<File?> downloadVoiceMessage(String audioUrl) async {
     try {
       print('📥 Downloading voice from: $audioUrl');
@@ -353,6 +649,65 @@ class ChatService {
       }
     } catch (e) {
       print('❌ Error downloading voice: $e');
+      return null;
+    }
+  }
+
+  // DOWNLOAD MEDIA FILE (IMAGE/VIDEO)
+  Future<File?> downloadMediaFile(String mediaUrl) async {
+    try {
+      print('📥 Downloading media from: $mediaUrl');
+
+      // Extract file extension from URL
+      String extension = mediaUrl.split('.').last.split('?').first;
+      if (extension.length > 5) extension = 'jpg'; // fallback
+
+      // Create a unique filename
+      final tempDir = await getTemporaryDirectory();
+      final fileName = 'media_${DateTime.now().millisecondsSinceEpoch}.$extension';
+      final filePath = '${tempDir.path}/$fileName';
+      final file = File(filePath);
+
+      // Download the file
+      final response = await http.get(Uri.parse(mediaUrl));
+
+      if (response.statusCode == 200) {
+        await file.writeAsBytes(response.bodyBytes);
+        print('✅ Media downloaded to: $filePath');
+        return file;
+      } else {
+        print('❌ Download failed: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ Error downloading media: $e');
+      return null;
+    }
+  }
+
+  // 🔥 NEW: DOWNLOAD DOCUMENT FILE
+  Future<File?> downloadDocumentFile(String documentUrl, String fileName) async {
+    try {
+      print('📥 Downloading document from: $documentUrl');
+
+      // Create a unique filename
+      final tempDir = await getTemporaryDirectory();
+      final filePath = '${tempDir.path}/$fileName';
+      final file = File(filePath);
+
+      // Download the file
+      final response = await http.get(Uri.parse(documentUrl));
+
+      if (response.statusCode == 200) {
+        await file.writeAsBytes(response.bodyBytes);
+        print('✅ Document downloaded to: $filePath');
+        return file;
+      } else {
+        print('❌ Download failed: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ Error downloading document: $e');
       return null;
     }
   }
@@ -461,24 +816,50 @@ class ChatService {
 
       String targetChatId = await getOrCreateChat(toUserId);
 
-      await _firestore
-          .collection('chats')
-          .doc(targetChatId)
-          .collection('messages')
-          .add({
+      // Prepare forwarded message data
+      Map<String, dynamic> forwardedData = {
         'senderId': currentUser.uid,
-        'message': originalMessage['message']?.toString() ?? '',
         'timestamp': FieldValue.serverTimestamp(),
-        'type': originalMessage['type']?.toString() ?? 'text',
         'is_forwarded': true,
         'original_sender': originalMessage['senderId'],
         'readBy': [currentUser.uid],
         'deliveredTo': [],
         'is_deleted': false,
-      });
+      };
+
+      // Copy message content based on type
+      if (originalMessage['type'] == 'text') {
+        forwardedData['message'] = originalMessage['message'];
+        forwardedData['type'] = 'text';
+      } else if (originalMessage['type'] == 'voice') {
+        forwardedData['message'] = '🎤 Voice message';
+        forwardedData['audioUrl'] = originalMessage['audioUrl'];
+        forwardedData['duration'] = originalMessage['duration'];
+        forwardedData['type'] = 'voice';
+      } else if (originalMessage['type'] == 'media') {
+        forwardedData['message'] = originalMessage['mediaType'] == 'image' ? '📷 Image' : '🎥 Video';
+        forwardedData['mediaUrl'] = originalMessage['mediaUrl'];
+        forwardedData['mediaType'] = originalMessage['mediaType'];
+        forwardedData['mediaWidth'] = originalMessage['mediaWidth'];
+        forwardedData['mediaHeight'] = originalMessage['mediaHeight'];
+        forwardedData['type'] = 'media';
+      } else if (originalMessage['type'] == 'document') {
+        forwardedData['message'] = originalMessage['message'];
+        forwardedData['documentUrl'] = originalMessage['documentUrl'];
+        forwardedData['documentName'] = originalMessage['documentName'];
+        forwardedData['documentExtension'] = originalMessage['documentExtension'];
+        forwardedData['documentSize'] = originalMessage['documentSize'];
+        forwardedData['type'] = 'document';
+      }
+
+      await _firestore
+          .collection('chats')
+          .doc(targetChatId)
+          .collection('messages')
+          .add(forwardedData);
 
       await _firestore.collection('chats').doc(targetChatId).update({
-        'lastMessage': originalMessage['message']?.toString() ?? '',
+        'lastMessage': forwardedData['message'],
         'lastMessageTime': FieldValue.serverTimestamp(),
         'lastMessageSender': currentUser.uid,
       });
