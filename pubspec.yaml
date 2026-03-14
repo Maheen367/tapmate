@@ -1,5 +1,5 @@
 name: tapmate
-description: "A new Flutter project."
+description: "TapMate - Social Media App"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -10,44 +10,52 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Firebase - COMPATIBLE VERSIONS
+  # ========== FIREBASE - COMPATIBLE VERSIONS ==========
   firebase_core: ^3.8.0
-  firebase_auth: ^5.3.4  # Downgrade to version compatible with storage
+  firebase_auth: ^5.3.4
   cloud_firestore: ^5.6.0
-  firebase_storage: ^12.3.7  # Upgrade to version compatible with auth
+  firebase_storage: ^12.3.7
 
-  # UI & Utilities
+  # ========== CLOUDINARY (Image Upload) ==========
+  cloudinary_public: ^0.23.1  # ✅ Simple Cloudinary integration
+  # cloudinary: ^1.0.0  # ❌ DUPLICATE - Remove this (dono ek saath use mat karo)
+
+  # ========== UI & UTILITIES ==========
   provider: ^6.1.1
   shared_preferences: ^2.2.2
   image_picker: ^1.0.7
   http: ^1.1.2
+  http_parser: ^4.0.2  # ✅ HTTP parsing ke liye
   intl: ^0.18.1
-
-  # Emoji Picker
-  emoji_picker_flutter: ^3.1.0
-
-  # Social Login - Use stable versions
-  google_sign_in: 5.4.4  # CRITICAL: Use exact version 5.4.4 to fix type cast error
-  flutter_facebook_auth: ^6.0.4
-  record: ^6.0.0  # For voice recording
-  permission_handler: ^11.0.1
-  audioplayers: ^5.2.1
-  wave: ^0.2.2  # For voice waveform
-  video_player: ^2.8.1
-  share_plus: ^7.2.0        # For sharing files
-  open_filex: ^4.3.2         # For opening files with external apps
-  agora_rtc_engine: ^6.3.0
-
-
-  # Other Packages
   cupertino_icons: ^1.0.8
   flutter_svg: ^2.0.9
   font_awesome_flutter: ^10.7.0
+
+  # ========== SOCIAL LOGIN ==========
+  google_sign_in: 5.4.4  # ✅ Exact version for type cast fix
+  flutter_facebook_auth: ^6.0.4
+
+  # ========== MEDIA & RECORDING ==========
+  record: ^6.0.0
+  permission_handler: ^11.0.1
+  audioplayers: ^5.2.1
+  wave: ^0.2.2
+  video_player: ^2.8.1
   file_picker: ^8.0.3
   path_provider: ^2.1.1
+
+  # ========== SHARE & OPEN FILES ==========
+  share_plus: ^7.2.0
+  open_filex: ^4.3.2
+
+  # ========== REAL-TIME COMMUNICATION ==========
+  agora_rtc_engine: ^6.3.0
+
+  # ========== EMOJI PICKER ==========
+  emoji_picker_flutter: ^3.1.0
+
+  # ========== ONBOARDING TOUR ==========
   showcaseview: ^3.0.0
-  cloudinary_public: ^0.23.1
-  http_parser: ^4.0.2
 
 dev_dependencies:
   flutter_test:

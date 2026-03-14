@@ -17,18 +17,19 @@ import 'package:tapmate/theme_provider.dart';
 import 'package:tapmate/auth_provider.dart';
 import 'package:tapmate/utils/guide_manager.dart';
 import 'package:tapmate/Screen/constants/app_colors.dart';
+import 'package:tapmate/utils/settings_provider.dart';
 import 'Screen/services/cloudinary_chatservice.dart';
 import 'auth_wrapper.dart';
 import 'firebase_options.dart'; // NEW: Firebase options import
 
-void main() async { // NEW: Added 'async'
+void main() async {
+  // NEW: Added 'async'
   WidgetsFlutterBinding.ensureInitialized();
   // Initialize Cloudinary
-  CloudinaryService().initialize();// NEW: Initialize binding
+  CloudinaryService().initialize(); // NEW: Initialize binding
   await Firebase.initializeApp(
     // NEW: Initialize Firebase
     options: DefaultFirebaseOptions.currentPlatform,
-
   );
 
   runApp(
@@ -36,6 +37,7 @@ void main() async { // NEW: Added 'async'
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
       ],
       child: const MyApp(),
     ),
@@ -70,7 +72,6 @@ class MyApp extends StatelessWidget {
                 useMaterial3: true,
                 brightness: Brightness.light,
                 scaffoldBackgroundColor: AppColors.lightBg,
-
                 colorScheme: ColorScheme.light(
                   primary: AppColors.primary,
                   secondary: AppColors.secondary,
@@ -81,7 +82,6 @@ class MyApp extends StatelessWidget {
                   onSurface: AppColors.textMain,
                   onBackground: AppColors.textMain,
                 ),
-
                 appBarTheme: const AppBarTheme(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -94,7 +94,6 @@ class MyApp extends StatelessWidget {
                   ),
                   iconTheme: IconThemeData(color: Colors.white),
                 ),
-
                 elevatedButtonTheme: ElevatedButtonThemeData(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.accent,
@@ -109,37 +108,42 @@ class MyApp extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 inputDecorationTheme: InputDecorationTheme(
                   filled: true,
                   fillColor: AppColors.lightSurface,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+                    borderSide:
+                        BorderSide(color: AppColors.primary, width: 1.5),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.secondary, width: 2),
+                    borderSide:
+                        BorderSide(color: AppColors.secondary, width: 2),
                   ),
                   labelStyle: const TextStyle(
                     color: AppColors.primary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-
                 cardTheme: CardThemeData(
                   color: AppColors.lightSurface,
                   elevation: 2,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: AppColors.primary.withOpacity(0.08), width: 1),
+                    side: BorderSide(
+                        color: AppColors.primary.withOpacity(0.08), width: 1),
                   ),
                 ),
-
                 textTheme: const TextTheme(
-                  displayLarge: TextStyle(color: AppColors.headingColor, fontWeight: FontWeight.bold, fontSize: 32),
+                  displayLarge: TextStyle(
+                      color: AppColors.headingColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 32),
                   bodyLarge: TextStyle(color: AppColors.textMain, fontSize: 16),
-                  bodyMedium: TextStyle(color: AppColors.secondary, fontSize: 14),
-                  labelLarge: TextStyle(color: AppColors.tagColor, fontWeight: FontWeight.w600),
+                  bodyMedium:
+                      TextStyle(color: AppColors.secondary, fontSize: 14),
+                  labelLarge: TextStyle(
+                      color: AppColors.tagColor, fontWeight: FontWeight.w600),
                 ),
               ),
 
@@ -148,7 +152,6 @@ class MyApp extends StatelessWidget {
                 useMaterial3: true,
                 brightness: Brightness.dark,
                 scaffoldBackgroundColor: AppColors.darkBg,
-
                 colorScheme: ColorScheme.dark(
                   primary: AppColors.primary,
                   secondary: AppColors.secondary,
@@ -159,7 +162,6 @@ class MyApp extends StatelessWidget {
                   onSurface: AppColors.textOnDark,
                   onBackground: AppColors.textOnDark,
                 ),
-
                 appBarTheme: const AppBarTheme(
                   backgroundColor: AppColors.darkBg,
                   foregroundColor: AppColors.accent,
@@ -172,17 +174,17 @@ class MyApp extends StatelessWidget {
                   ),
                   iconTheme: IconThemeData(color: AppColors.accent),
                 ),
-
                 elevatedButtonTheme: ElevatedButtonThemeData(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.secondary,
                     foregroundColor: Colors.white,
                     minimumSize: const Size(double.infinity, 52),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    textStyle: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ),
-
                 inputDecorationTheme: InputDecorationTheme(
                   filled: true,
                   fillColor: AppColors.darkSurface,
@@ -191,40 +193,43 @@ class MyApp extends StatelessWidget {
                     borderSide: BorderSide.none,
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: AppColors.secondary, width: 2),
+                    borderSide:
+                        BorderSide(color: AppColors.secondary, width: 2),
                   ),
                 ),
-
                 cardTheme: CardThemeData(
                   color: AppColors.darkSurface,
                   elevation: 4,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: AppColors.secondary.withOpacity(0.4)),
+                    side:
+                        BorderSide(color: AppColors.secondary.withOpacity(0.4)),
                   ),
                 ),
-
                 textTheme: const TextTheme(
-                  displayLarge: TextStyle(color: AppColors.textOnDark, fontWeight: FontWeight.bold),
+                  displayLarge: TextStyle(
+                      color: AppColors.textOnDark, fontWeight: FontWeight.bold),
                   bodyLarge: TextStyle(color: AppColors.textOnDark),
                   bodyMedium: TextStyle(color: AppColors.accent),
                   labelLarge: TextStyle(color: AppColors.accent),
                 ),
               ),
 
-              themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+              themeMode:
+                  themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
               home: const AuthWrapper(),
               routes: {
                 '/home': (context) => const HomeScreen(),
                 '/chat': (context) => const ChatScreen(),
                 '/search': (context) => const SearchDiscoverScreen(),
-                '/platform-selection': (context) => const PlatformSelectionScreen(),
+                '/platform-selection': (context) =>
+                    const PlatformSelectionScreen(),
                 '/library': (context) => const LibraryScreen(),
                 '/feed': (context) => const FeedScreen(),
                 '/profile': (context) => const UserProfileScreen(),
                 '/settings': (context) => const SettingsScreen(),
                 '/login': (context) => const LoginScreen(),
-                '/create-post': (context) =>  CreatePostScreen(),
+                '/create-post': (context) => CreatePostScreen(),
               },
             );
           },
