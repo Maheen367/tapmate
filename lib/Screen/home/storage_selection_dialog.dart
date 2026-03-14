@@ -1,10 +1,11 @@
+// lib/Screen/home/storage_selection_dialog.dart
+
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart'; //
+import 'package:path_provider/path_provider.dart';
 import 'format_selection_dialog.dart';
 import 'dart:io';
 import 'package:tapmate/Screen/constants/app_colors.dart';
-
 
 class StorageSelectionDialog extends StatefulWidget {
   final String platformName;
@@ -21,22 +22,41 @@ class StorageSelectionDialog extends StatefulWidget {
     required this.onDeviceStorageSelected,
     required this.onAppStorageSelected,
   });
-
   @override
   State<StorageSelectionDialog> createState() => _StorageSelectionDialogState();
 }
 
-class _StorageSelectionDialogState extends State<StorageSelectionDialog> {
+class _StorageSelectionDialogState extends State<StorageSelectionDialog> with SingleTickerProviderStateMixin {
   bool _isSelectingPath = false;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeInOut,
+    );
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
   Future<void> _selectDevicePath() async {
     if (!mounted) return;
 
-    setState(() {
-      _isSelectingPath = true;
-    });
+    setState(() => _isSelectingPath = true);
 
-    // ✅ FIXED: Changed to Map<String, dynamic>
+    // Show format selection first
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => FormatSelectionDialog(
@@ -45,104 +65,75 @@ class _StorageSelectionDialogState extends State<StorageSelectionDialog> {
     );
 
     if (result != null && mounted) {
-      // ✅ FIXED: Safe access with null checks
-      final format = result['format']?.toString() ?? 'Video';
+      final format = result['format']?.toString() ?? 'mp4';
       final quality = result['quality']?.toString() ?? '1080p';
 
-      // Now select storage path
       await _selectPathAfterFormat(format, quality);
     } else {
-      if (mounted) {
-        setState(() {
-          _isSelectingPath = false;
-        });
-      }
+      if (mounted) setState(() => _isSelectingPath = false);
     }
   }
 
-  // ✅ UPDATED FUNCTION: FIXED VERSION
   Future<void> _selectPathAfterFormat(String format, String quality) async {
     try {
-      // First try to use FilePicker to select a file (extract directory)
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.any,
-        allowMultiple: false,
-        dialogTitle: 'Select a location to save your download',
+      // Let user select directory
+      String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: 'Select download location',
       );
 
-      if (result != null && result.files.single.path != null) {
-        String filePath = result.files.single.path!;
-        String directory = filePath.substring(0, filePath.lastIndexOf('/'));
-
-        // ✅ Close dialog and pass data
+      if (selectedDirectory != null && mounted) {
         Navigator.pop(context); // Close storage dialog
-        widget.onDeviceStorageSelected(directory, format, quality);
+        widget.onDeviceStorageSelected(selectedDirectory, format, quality);
       } else {
-        // User cancelled - use default downloads directory
+        // User cancelled - use default
         if (mounted) {
-          setState(() {
-            _isSelectingPath = false;
-          });
+          setState(() => _isSelectingPath = false);
 
-          // Try to get downloads directory
-          try {
-            final Directory? downloadsDir = await getExternalStorageDirectory();
-            if (downloadsDir != null) {
-              Navigator.pop(context);
-              widget.onDeviceStorageSelected('${downloadsDir.path}/TapMate_Downloads', format, quality);
-            } else {
-              // Fallback to app directory
-              final Directory appDir = await getApplicationDocumentsDirectory();
-              Navigator.pop(context);
-              widget.onDeviceStorageSelected('${appDir.path}/Downloads', format, quality);
-            }
-          } catch (e) {
-            // Final fallback
+          // Ask if they want to use default
+          final useDefault = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Use Default Location?'),
+              content: Text(
+                'No folder selected. Use default download folder?\n\n'
+                    '${_getDefaultPath()}',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Use Default'),
+                ),
+              ],
+            ),
+          ) ?? false;
+
+          if (useDefault) {
             Navigator.pop(context);
-            widget.onDeviceStorageSelected('/storage/emulated/0/Download/TapMate', format, quality);
+            widget.onDeviceStorageSelected(_getDefaultPath(), format, quality);
           }
         }
       }
     } catch (e) {
-      // Handle all errors gracefully
       if (mounted) {
-        setState(() {
-          _isSelectingPath = false;
-        });
-
-        // Show simple confirmation for default path
-        bool useDefault = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Download Location'),
-            content: const Text(
-              'Unable to select custom location.\n\n'
-                  'Use default download folder?\n'
-                  '/storage/emulated/0/Download/TapMate',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Use Default'),
-              ),
-            ],
-          ),
-        ) ?? false;
-
-        if (useDefault) {
-          Navigator.pop(context);
-          widget.onDeviceStorageSelected('/storage/emulated/0/Download/TapMate', format, quality);
-        }
+        setState(() => _isSelectingPath = false);
+        _showErrorDialog('Error selecting path: ${e.toString()}');
       }
     }
   }
 
+  String _getDefaultPath() {
+    if (Platform.isAndroid) {
+      return '/storage/emulated/0/Download/TapMate/${widget.platformName.toLowerCase()}';
+    } else {
+      return 'TapMate Downloads/${widget.platformName}';
+    }
+  }
+
   void _handleAppStorage() async {
-    // ✅ FIXED: Changed to Map<String, dynamic>
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => FormatSelectionDialog(
@@ -150,104 +141,95 @@ class _StorageSelectionDialogState extends State<StorageSelectionDialog> {
       ),
     );
 
-    if (result != null) {
-      // ✅ FIXED: Safe access with null checks
-      final format = result['format']?.toString() ?? 'Video';
+    if (result != null && mounted) {
+      final format = result['format']?.toString() ?? 'mp4';
       final quality = result['quality']?.toString() ?? '1080p';
 
-      // ✅ Close BOTH dialogs and pass data
       Navigator.pop(context); // Close storage dialog
       widget.onAppStorageSelected(format, quality);
-    } else {
-      // User cancelled format selection
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Format selection cancelled'),
-            duration: Duration(seconds: 1),
-          ),
-        );
-      }
     }
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        return !_isSelectingPath;
-      },
+    return FadeTransition(
+      opacity: _fadeAnimation,
       child: Dialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(25),
         ),
         child: Container(
+          width: double.infinity,
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             color: AppColors.lightSurface,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(25),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.secondary, AppColors.primary],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.download_rounded,
-                      color: AppColors.lightSurface,
-                      size: 24,
-                    ),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.secondary, AppColors.primary],
                   ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Select Storage',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.accent,
-                          ),
-                        ),
-                        Text(
-                          'Choose where to save ${widget.platformName} content',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.download_rounded,
+                  color: Colors.white,
+                  size: 32,
+                ),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 16),
+              const Text(
+                'Choose Storage',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.accent,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Select where to save your download',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 24),
 
-              // Device Storage Option
+              // Device Storage
               _buildStorageOption(
                 icon: Icons.phone_android,
                 title: 'Device Storage',
-                subtitle: 'Save to your device storage',
+                subtitle: 'Save to SD card or internal storage',
                 color: AppColors.primary,
                 onTap: _isSelectingPath ? null : _selectDevicePath,
                 isLoading: _isSelectingPath,
               ),
+              const SizedBox(height: 12),
 
-              const SizedBox(height: 15),
-
-              // App Storage Option
+              // App Storage
               _buildStorageOption(
                 icon: Icons.folder,
                 title: 'App Storage',
@@ -256,7 +238,6 @@ class _StorageSelectionDialogState extends State<StorageSelectionDialog> {
                 onTap: _handleAppStorage,
                 isLoading: false,
               ),
-
               const SizedBox(height: 20),
 
               // Cancel Button
@@ -276,6 +257,7 @@ class _StorageSelectionDialogState extends State<StorageSelectionDialog> {
                     style: TextStyle(
                       color: Colors.grey[700],
                       fontWeight: FontWeight.w600,
+                      fontSize: 16,
                     ),
                   ),
                 ),
@@ -316,20 +298,16 @@ class _StorageSelectionDialogState extends State<StorageSelectionDialog> {
                 color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 24,
-              ),
+              child: Icon(icon, color: color, size: 28),
             ),
-            const SizedBox(width: 15),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: AppColors.accent,
@@ -339,7 +317,7 @@ class _StorageSelectionDialogState extends State<StorageSelectionDialog> {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       color: Colors.grey[600],
                     ),
                   ),
@@ -352,7 +330,6 @@ class _StorageSelectionDialogState extends State<StorageSelectionDialog> {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
                 ),
               )
             else
@@ -367,4 +344,3 @@ class _StorageSelectionDialogState extends State<StorageSelectionDialog> {
     );
   }
 }
-

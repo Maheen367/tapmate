@@ -1,11 +1,30 @@
+// lib/Screen/home/platform_selection_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'platform_auth_screen.dart';
 import 'package:tapmate/Screen/constants/app_colors.dart';
-
+import 'package:url_launcher/url_launcher.dart';
 
 class PlatformSelectionScreen extends StatelessWidget {
   const PlatformSelectionScreen({super.key});
+
+  final List<Map<String, dynamic>> popularPlatforms = const [
+    {'name': 'YouTube', 'icon': FontAwesomeIcons.youtube, 'color': Color(0xFFFF0000), 'url': 'https://youtube.com'},
+    {'name': 'Instagram', 'icon': FontAwesomeIcons.instagram, 'color': Color(0xFFE4405F), 'url': 'https://instagram.com'},
+    {'name': 'TikTok', 'icon': FontAwesomeIcons.tiktok, 'color': Color(0xFF000000), 'url': 'https://tiktok.com'},
+    {'name': 'Facebook', 'icon': FontAwesomeIcons.facebook, 'color': Color(0xFF1877F2), 'url': 'https://facebook.com'},
+    {'name': 'Twitter', 'icon': FontAwesomeIcons.twitter, 'color': Color(0xFF1DA1F2), 'url': 'https://twitter.com'},
+    {'name': 'WhatsApp', 'icon': FontAwesomeIcons.whatsapp, 'color': Color(0xFF25D366), 'url': 'https://whatsapp.com'},
+  ];
+
+  final List<Map<String, dynamic>> morePlatforms = const [
+    {'name': 'Snapchat', 'icon': FontAwesomeIcons.snapchat, 'color': Color(0xFFFFFC00)},
+    {'name': 'LinkedIn', 'icon': FontAwesomeIcons.linkedin, 'color': Color(0xFF0077B5)},
+    {'name': 'Pinterest', 'icon': FontAwesomeIcons.pinterest, 'color': Color(0xFFBD081C)},
+    {'name': 'Reddit', 'icon': FontAwesomeIcons.reddit, 'color': Color(0xFFFF4500)},
+    {'name': 'Twitch', 'icon': FontAwesomeIcons.twitch, 'color': Color(0xFF9146FF)},
+    {'name': 'Discord', 'icon': FontAwesomeIcons.discord, 'color': Color(0xFF5865F2)},
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -13,154 +32,128 @@ class PlatformSelectionScreen extends StatelessWidget {
       backgroundColor: AppColors.lightSurface,
       body: Column(
         children: [
-          // Gradient Header - REDUCED HEIGHT
+          // Modern Header
           Container(
-            height: 160, // Reduced from 200
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 60, 24, 40),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [AppColors.accent, AppColors.secondary, AppColors.primary],
               ),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(25),
-                bottomRight: Radius.circular(25),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(35),
+                bottomRight: Radius.circular(35),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back, color: AppColors.lightSurface, size: 24),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                        const Expanded(
-                          child: Text(
-                            'Select Platform',
-                            style: TextStyle(
-                              color: AppColors.lightSurface,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 22, // Slightly smaller
-                            ),
-                          ),
-                        ),
-                      ],
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
                     ),
-                    const SizedBox(height: 8), // Reduced spacing
-                    Padding(
-                      padding: const EdgeInsets.only(left: 55), // Align with text
+                    const SizedBox(width: 16),
+                    const Expanded(
                       child: Text(
-                        'Choose where to download from',
+                        'Select Platform',
                         style: TextStyle(
-                          fontSize: 15,
-                          color: AppColors.lightSurface.withOpacity(0.9),
-                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                   ],
                 ),
-              ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Choose where to download from',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
             ),
           ),
 
-          // Content - FIXED POSITIONING
+          // Content
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'Popular Platforms',
                     style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.accent,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Popular Platforms Grid
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: 0.9,
+                    ),
+                    itemCount: popularPlatforms.length,
+                    itemBuilder: (context, index) {
+                      final platform = popularPlatforms[index];
+                      return _buildPlatformCard(
+                        platform['name'],
+                        platform['icon'],
+                        platform['color'],
+                        onTap: () {
+                          _handlePlatformSelection(context, platform['name'], platform['url']);
+                        },
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  const Text(
+                    'More Platforms',
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                       color: AppColors.accent,
                     ),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 16),
 
-                  // Platforms Grid
-                  Expanded(
-                    child: GridView.count(
-                      crossAxisCount: 3, // Changed to 3 columns for better layout
-                      shrinkWrap: true,
-                      crossAxisSpacing: 12,
-                      mainAxisSpacing: 12,
-                      childAspectRatio: 0.85, // Better for square-ish cards
-                      children: [
-                        _buildPlatformCard(
-                          context,
-                          'YouTube',
-                          FontAwesomeIcons.youtube,
-                          const Color(0xFFFF0000),
-                          'youtube',
-                        ),
-                        _buildPlatformCard(
-                          context,
-                          'Instagram',
-                          FontAwesomeIcons.instagram,
-                          const Color(0xFFE4405F),
-                          'instagram',
-                        ),
-                        _buildPlatformCard(
-                          context,
-                          'TikTok',
-                          FontAwesomeIcons.tiktok,
-                          const Color(0xFF000000),
-                          'tiktok',
-                        ),
-                        _buildPlatformCard(
-                          context,
-                          'Facebook',
-                          FontAwesomeIcons.facebook,
-                          const Color(0xFF1877F2),
-                          'facebook',
-                        ),
-                        _buildPlatformCard(
-                          context,
-                          'Twitter',
-                          FontAwesomeIcons.twitter,
-                          const Color(0xFF1DA1F2),
-                          'twitter',
-                        ),
-                        _buildPlatformCard(
-                          context,
-                          'WhatsApp',
-                          FontAwesomeIcons.whatsapp,
-                          const Color(0xFF25D366),
-                          'whatsapp',
-                        ),
-                        _buildPlatformCard(
-                          context,
-                          'Snapchat',
-                          FontAwesomeIcons.snapchat,
-                          const Color(0xFFFFFC00),
-                          'snapchat',
-                        ),
-                        _buildPlatformCard(
-                          context,
-                          'LinkedIn',
-                          FontAwesomeIcons.linkedin,
-                          const Color(0xFF0077B5),
-                          'linkedin',
-                        ),
-                        _buildPlatformCard(
-                          context,
-                          'Pinterest',
-                          FontAwesomeIcons.pinterest,
-                          const Color(0xFFBD081C),
-                          'pinterest',
-                        ),
-                      ],
-                    ),
-                  ),
+                  // More Platforms List
+                  ...morePlatforms.map((platform) => _buildMorePlatformItem(
+                    platform['name'],
+                    platform['icon'],
+                    platform['color'],
+                    context,  // ✅ context pass kiya
+                  )),
                 ],
               ),
             ),
@@ -170,89 +163,39 @@ class PlatformSelectionScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPlatformCard(
-      BuildContext context,
-      String platformName,
-      IconData icon,
-      Color color,
-      String platformId,
-      ) {
+  Widget _buildPlatformCard(String name, IconData icon, Color color, {required VoidCallback onTap}) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PlatformAuthScreen(
-              platformName: platformName,
-              platformId: platformId,
-              platformColor: color,
-              platformIcon: icon,
-            ),
-          ),
-        );
-      },
+      onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.lightSurface,
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: AppColors.accent.withOpacity(0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 3),
+              color: color.withOpacity(0.15),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
-          border: Border.all(
-            color: AppColors.accent.withOpacity(0.1),
-            width: 1,
-          ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Platform Icon with gradient background
             Container(
-              padding: const EdgeInsets.all(15),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    color.withOpacity(0.2),
-                    color.withOpacity(0.05),
-                  ],
-                ),
+                color: color.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
-              child: FaIcon(
-                icon,
-                color: color,
-                size: 28,
-              ),
+              child: FaIcon(icon, color: color, size: 28),
             ),
             const SizedBox(height: 10),
-
-            // Platform Name
             Text(
-              platformName,
+              name,
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: AppColors.accent,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-
-            // Small indicator
-            const SizedBox(height: 6),
-            Container(
-              width: 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
               ),
             ),
           ],
@@ -260,5 +203,201 @@ class PlatformSelectionScreen extends StatelessWidget {
       ),
     );
   }
-}
 
+  // ✅ Fixed: Added context parameter
+  Widget _buildMorePlatformItem(String name, IconData icon, Color color, BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ListTile(
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: FaIcon(icon, color: color, size: 20),
+        ),
+        title: Text(
+          name,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.accent,
+          ),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.primary),
+        onTap: () {
+          _showComingSoonDialog(context, name);  // ✅ context pass kiya
+        },
+      ),
+    );
+  }
+
+  void _handlePlatformSelection(BuildContext context, String platformName, String url) async {
+    if (platformName == 'YouTube') {
+      // YouTube ke liye special handling
+      _showYouTubeOptions(context);
+    } else {
+      // Other platforms - open app or browser
+      try {
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      } catch (e) {
+        _showComingSoonDialog(context, platformName);  // ✅ context pass kiya
+      }
+    }
+  }
+
+  void _showYouTubeOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Download from YouTube',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppColors.accent,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.link, color: Colors.red),
+              ),
+              title: const Text('Paste YouTube Link'),
+              subtitle: const Text('Copy link from YouTube app and paste here'),
+              onTap: () {
+                Navigator.pop(context);
+                _showLinkInputDialog(context);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.open_in_browser, color: Colors.red),
+              ),
+              title: const Text('Open YouTube App'),
+              subtitle: const Text('Browse and copy link manually'),
+              onTap: () async {
+                Navigator.pop(context);
+                await launchUrl(
+                  Uri.parse('https://youtube.com'),
+                  mode: LaunchMode.externalApplication,
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showLinkInputDialog(BuildContext context) {
+    final TextEditingController linkController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enter YouTube Link'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Copy link from YouTube app and paste below:'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: linkController,
+              decoration: InputDecoration(
+                hintText: 'https://youtube.com/watch?v=...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                prefixIcon: const Icon(Icons.link),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (linkController.text.isNotEmpty) {
+                Navigator.pop(context);
+                _navigateToDownload(context, linkController.text);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Download'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateToDownload(BuildContext context, String videoUrl) {
+    // Navigate to your download screen with the URL
+    Navigator.pushNamed(
+      context,
+      '/youtube_downloader',
+      arguments: {'url': videoUrl},
+    );
+  }
+
+  // ✅ Fixed: Added context parameter and removed garbage
+  void _showComingSoonDialog(BuildContext context, String platformName) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('$platformName Coming Soon!'),
+        content: Text('Support for $platformName will be added soon. Stay tuned!'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+}

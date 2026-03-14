@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.2.0  # IMPORTANT: 3.2.0 hi rakhna
+  sdk: ^3.2.0
 
 dependencies:
   flutter:
@@ -23,14 +23,24 @@ dependencies:
   http: ^1.1.0
   intl: ^0.18.1
 
-  # 👇 EMOJI PICKER ADD KAR DIYA
+  # Emoji Picker
   emoji_picker_flutter: ^3.1.0
 
   # Social Login
   google_sign_in: ^6.2.1
   flutter_facebook_auth: ^6.2.0
 
-  # Other Packages (jo aapne batae the)
+  # Audio/Video
+  record: ^6.0.0
+  permission_handler: ^11.0.1
+  audioplayers: ^5.2.1
+  wave: ^0.2.2
+  video_player: ^2.8.1
+  share_plus: ^7.2.0
+  open_filex: ^4.3.2
+  agora_rtc_engine: ^6.3.0
+
+  # Other Packages
   cupertino_icons: ^1.0.8
   flutter_svg: ^2.1.1
   font_awesome_flutter: ^10.7.0
@@ -39,6 +49,9 @@ dependencies:
   showcaseview: ^3.0.0
   cloudinary_public: ^0.23.1
   http_parser: ^4.0.2
+  flutter_downloader: ^1.11.5
+  youtube_explode_dart: ^2.0.0
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

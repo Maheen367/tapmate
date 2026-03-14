@@ -271,4 +271,3 @@ class _PermissionScreenState extends State<PermissionScreen> {
       ),
     );}
 }
-

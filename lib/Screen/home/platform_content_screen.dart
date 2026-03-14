@@ -1,5 +1,9 @@
+// lib/Screen/home/platform_content_screen.dart
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:tapmate/Screen/services/platform_downloader.dart';
+import 'package:tapmate/Screen/services/platform_auth_service.dart';
 import 'storage_selection_dialog.dart';
 import 'download_progress_screen.dart';
 import 'package:tapmate/Screen/constants/app_colors.dart';
@@ -9,6 +13,7 @@ class PlatformContentScreen extends StatefulWidget {
   final String platformId;
   final Color platformColor;
   final IconData platformIcon;
+  final PlatformSession? platformSession;
 
   const PlatformContentScreen({
     super.key,
@@ -16,17 +21,19 @@ class PlatformContentScreen extends StatefulWidget {
     required this.platformId,
     required this.platformColor,
     required this.platformIcon,
+    this.platformSession,
   });
 
   @override
   State<PlatformContentScreen> createState() => _PlatformContentScreenState();
 }
 
-class _PlatformContentScreenState extends State<PlatformContentScreen> {
+class _PlatformContentScreenState extends State<PlatformContentScreen> with SingleTickerProviderStateMixin {
   String? _selectedContentId;
   bool _isContentSelected = false;
+  late AnimationController _animationController;
+  late Animation<double> _scaleAnimation;
 
-  // Sample content items
   final List<Map<String, dynamic>> _contentItems = [
     {
       'id': '1',
@@ -34,6 +41,7 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
       'thumbnail': '🎬',
       'duration': '2:34',
       'views': '1.2M',
+      'url': 'https://youtube.com/watch?v=123',
     },
     {
       'id': '2',
@@ -41,6 +49,7 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
       'thumbnail': '👨‍🍳',
       'duration': '5:12',
       'views': '856K',
+      'url': 'https://youtube.com/watch?v=456',
     },
     {
       'id': '3',
@@ -48,29 +57,29 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
       'thumbnail': '✈️',
       'duration': '8:45',
       'views': '2.1M',
-    },
-    {
-      'id': '4',
-      'title': 'Music Video',
-      'thumbnail': '🎵',
-      'duration': '3:20',
-      'views': '3.5M',
-    },
-    {
-      'id': '5',
-      'title': 'Gaming Highlights',
-      'thumbnail': '🎮',
-      'duration': '10:15',
-      'views': '1.8M',
-    },
-    {
-      'id': '6',
-      'title': 'Fitness Workout',
-      'thumbnail': '💪',
-      'duration': '15:30',
-      'views': '945K',
+      'url': 'https://youtube.com/watch?v=789',
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutBack),
+    );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+// In platform_content_screen.dart - Fix the StorageSelectionDialog call
 
   void _showStorageSelectionDialog() {
     if (_selectedContentId == null) {
@@ -91,24 +100,68 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
     showDialog(
       context: context,
       builder: (context) => StorageSelectionDialog(
-        platformName: widget.platformName,
-        contentId: _selectedContentId!,
-        contentTitle: selectedContent['title'] as String,
+        platformName: widget.platformName,           // String
+        contentId: _selectedContentId!,              // String
+        contentTitle: selectedContent['title'],      // String
         onDeviceStorageSelected: (path, format, quality) {
-          Navigator.pop(context); // Storage dialog close
-          _handleDeviceStorageDownload(path, format, quality, selectedContent);
+          // Close dialog
+          Navigator.pop(context);
+
+          // Start download with device storage
+          _startDownload(
+            path: path,
+            format: format,
+            quality: quality,
+            content: selectedContent,
+          );
         },
         onAppStorageSelected: (format, quality) {
-          Navigator.pop(context); // Storage dialog close
-          _handleAppStorageDownload(format, quality, selectedContent);
+          // Close dialog
+          Navigator.pop(context);
+
+          // Start download with app storage
+          _startDownload(
+            format: format,
+            quality: quality,
+            content: selectedContent,
+          );
         },
       ),
     );
   }
+  Future<void> _startDownload({
+    String? path,
+    required String format,
+    required String quality,
+    required Map<String, dynamic> content,
+  }) async {
+    final downloader = PlatformDownloader();
 
+    // Show downloading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
 
-  void _handleDeviceStorageDownload(String? path, String format, String quality, Map<String, dynamic> content) {
-    if (path != null && path.isNotEmpty) {
+    final result = await downloader.downloadVideo(
+      platformId: widget.platformId,
+      videoUrl: content['url'],
+      videoTitle: content['title'],
+      format: format,
+      quality: quality,
+      customPath: path,
+    );
+
+    if (!mounted) return;
+
+    // Close loading dialog
+    Navigator.pop(context);
+
+    if (result.success) {
+      // Navigate to progress screen
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -116,30 +169,23 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
             platformName: widget.platformName,
             contentTitle: '${content['title']} ($format - $quality)',
             storagePath: path,
-            isDeviceStorage: true,
+            isDeviceStorage: path != null,
             fromPlatformScreen: true,
-            sourcePlatform: widget.platformId, // Make sure this is the actual platform ID (e.g., 'instagram', 'youtube')
+            sourcePlatform: widget.platformId,
+            // Remove platformId and downloadId
           ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ ${result.message}'),
+          backgroundColor: Colors.red,
         ),
       );
     }
   }
 
-  void _handleAppStorageDownload(String format, String quality, Map<String, dynamic> content) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => DownloadProgressScreen(
-          platformName: widget.platformName,
-          contentTitle: '${content['title']} ($format - $quality)',
-          storagePath: null,
-          isDeviceStorage: false,
-          fromPlatformScreen: true,
-          sourcePlatform: widget.platformId, // Make sure this is the actual platform ID
-        ),
-      ),
-    );
-  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -149,7 +195,7 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
           SafeArea(
             child: Column(
               children: [
-                // Header - FIXED
+                // Professional Header
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
@@ -180,43 +226,42 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
                     children: [
                       Row(
                         children: [
-                          // Back Button - FIXED
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back, color: AppColors.lightSurface),
-                            onPressed: () {
-                              Navigator.pop(context); // Simple pop
-                            },
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: IconButton(
+                              icon: const Icon(Icons.arrow_back, color: Colors.white),
+                              onPressed: () => Navigator.pop(context),
+                            ),
                           ),
-                          // Home Button - FIXED
+                          const SizedBox(width: 12),
                           Expanded(
                             child: GestureDetector(
-                              onTap: () {
-                                Navigator.pushNamedAndRemoveUntil(
-                                  context,
-                                  '/home',
-                                      (route) => false,
-                                );
-                              },
+                              onTap: () => Navigator.pushNamedAndRemoveUntil(
+                                context,
+                                '/home',
+                                    (route) => false,
+                              ),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                                 decoration: BoxDecoration(
-                                  color: AppColors.lightSurface.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(20),
+                                  color: Colors.white.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(25),
                                   border: Border.all(
-                                    color: AppColors.lightSurface.withOpacity(0.3),
-                                    width: 1.5,
+                                    color: Colors.white.withOpacity(0.3),
                                   ),
                                 ),
                                 child: const Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.home, color: AppColors.lightSurface, size: 18),
+                                    Icon(Icons.home, color: Colors.white, size: 18),
                                     SizedBox(width: 6),
                                     Text(
                                       'TapMate',
                                       style: TextStyle(
-                                        color: AppColors.lightSurface,
-                                        fontSize: 14,
+                                        color: Colors.white,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -225,49 +270,91 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          // Platform Icon
+                          const SizedBox(width: 12),
+                          // User profile indicator
                           Container(
-                            padding: const EdgeInsets.all(10),
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: AppColors.lightSurface.withOpacity(0.15),
+                              color: Colors.white.withOpacity(0.15),
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: AppColors.lightSurface.withOpacity(0.3),
-                                width: 2,
+                                color: Colors.white.withOpacity(0.3),
                               ),
                             ),
                             child: FaIcon(
                               widget.platformIcon,
-                              color: AppColors.lightSurface,
-                              size: 24,
+                              color: Colors.white,
+                              size: 20,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 15),
-                      Text(
-                        widget.platformName,
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.lightSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Browse and download content',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.lightSurface.withOpacity(0.9),
-                          fontWeight: FontWeight.w500,
-                        ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: FaIcon(
+                              widget.platformIcon,
+                              color: Colors.white,
+                              size: 30,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.platformName,
+                                  style: const TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Browse and download content',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white.withOpacity(0.9),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (widget.platformSession != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.green),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.check_circle, color: Colors.green, size: 14),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    'Connected',
+                                    style: TextStyle(color: Colors.green, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
                       ),
                     ],
                   ),
                 ),
 
-                // Content List
+                // Content Grid
                 Expanded(
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
@@ -289,37 +376,48 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
                           physics: const NeverScrollableScrollPhysics(),
                           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 2,
-                            crossAxisSpacing: 15,
-                            mainAxisSpacing: 15,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
                             childAspectRatio: 0.75,
                           ),
                           itemCount: _contentItems.length,
                           itemBuilder: (context, index) {
                             final item = _contentItems[index];
                             final isSelected = _selectedContentId == item['id'];
+
+                            if (isSelected) {
+                              _animationController.forward();
+                            }
+
                             return GestureDetector(
                               onTap: () {
                                 setState(() {
+                                  if (_selectedContentId != item['id']) {
+                                    _animationController.reset();
+                                    _animationController.forward();
+                                  }
                                   _selectedContentId = item['id'];
                                   _isContentSelected = true;
                                 });
                               },
-                              child: Container(
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                curve: Curves.easeInOut,
                                 decoration: BoxDecoration(
-                                  color: AppColors.lightSurface,
-                                  borderRadius: BorderRadius.circular(16),
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
                                     color: isSelected
-                                        ? AppColors.primary
-                                        : AppColors.accent.withOpacity(0.1),
-                                    width: isSelected ? 2.5 : 1,
+                                        ? widget.platformColor
+                                        : Colors.grey.withOpacity(0.2),
+                                    width: isSelected ? 3 : 1,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
                                       color: isSelected
-                                          ? AppColors.primary.withOpacity(0.2)
+                                          ? widget.platformColor.withOpacity(0.3)
                                           : Colors.grey.withOpacity(0.1),
-                                      blurRadius: isSelected ? 10 : 5,
+                                      blurRadius: isSelected ? 15 : 5,
                                       offset: const Offset(0, 4),
                                     ),
                                   ],
@@ -341,13 +439,13 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
                                             ],
                                           ),
                                           borderRadius: const BorderRadius.only(
-                                            topLeft: Radius.circular(16),
-                                            topRight: Radius.circular(16),
+                                            topLeft: Radius.circular(20),
+                                            topRight: Radius.circular(20),
                                           ),
                                         ),
                                         child: Center(
                                           child: Text(
-                                            item['thumbnail'] as String,
+                                            item['thumbnail'],
                                             style: const TextStyle(fontSize: 50),
                                           ),
                                         ),
@@ -360,31 +458,30 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            item['title'] as String,
+                                            item['title'],
                                             style: TextStyle(
                                               fontSize: 14,
                                               fontWeight: FontWeight.bold,
                                               color: isSelected
-                                                  ? AppColors.primary
+                                                  ? widget.platformColor
                                                   : AppColors.accent,
                                             ),
                                             maxLines: 2,
                                             overflow: TextOverflow.ellipsis,
                                           ),
-                                          const SizedBox(height: 6),
+                                          const SizedBox(height: 8),
                                           Row(
-                                            mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                             children: [
                                               Text(
-                                                item['duration'] as String,
+                                                item['duration'],
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color: Colors.grey[600],
                                                 ),
                                               ),
                                               Text(
-                                                item['views'] as String,
+                                                item['views'],
                                                 style: TextStyle(
                                                   fontSize: 12,
                                                   color: Colors.grey[600],
@@ -396,16 +493,18 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
                                             const SizedBox(height: 8),
                                             Container(
                                               padding: const EdgeInsets.symmetric(
-                                                  horizontal: 8, vertical: 4),
-                                              decoration: BoxDecoration(
-                                                color: AppColors.primary.withOpacity(0.1),
-                                                borderRadius: BorderRadius.circular(8),
+                                                horizontal: 8,
+                                                vertical: 4,
                                               ),
-                                              child: const Text(
+                                              decoration: BoxDecoration(
+                                                color: widget.platformColor.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child: Text(
                                                 'Selected',
                                                 style: TextStyle(
                                                   fontSize: 10,
-                                                  color: AppColors.primary,
+                                                  color: widget.platformColor,
                                                   fontWeight: FontWeight.bold,
                                                 ),
                                               ),
@@ -429,22 +528,25 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
             ),
           ),
 
-          // Floating Action Button
+          // Floating Action Button with Animation
           if (_isContentSelected)
             Positioned(
               right: 20,
               bottom: 20,
-              child: FloatingActionButton.extended(
-                onPressed: _showStorageSelectionDialog,
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.lightSurface,
-                elevation: 8,
-                icon: const Icon(Icons.download_rounded, size: 24),
-                label: const Text(
-                  'Download',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+              child: ScaleTransition(
+                scale: _scaleAnimation,
+                child: FloatingActionButton.extended(
+                  onPressed: _showStorageSelectionDialog,
+                  backgroundColor: widget.platformColor,
+                  foregroundColor: Colors.white,
+                  elevation: 8,
+                  icon: const Icon(Icons.download_rounded, size: 24),
+                  label: const Text(
+                    'Download',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
               ),
@@ -454,4 +556,3 @@ class _PlatformContentScreenState extends State<PlatformContentScreen> {
     );
   }
 }
-
