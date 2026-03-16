@@ -1,4 +1,4 @@
-// lib/Screen/home/search_screen.dart (COMPLETE UPDATED VERSION)
+// lib/Screen/home/search_screen.dart (COMPLETE FINAL VERSION)
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -36,7 +36,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
   List<String> _trendingSearches = [];
 
   @override
-  bool get wantKeepAlive => true; // Keep state when switching tabs
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -45,33 +45,30 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
   }
 
   Future<void> _loadInitialData() async {
+    if (!mounted) return;
     setState(() => _isSearching = true);
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-      // Load search history for logged-in users
       if (!authProvider.isGuest) {
         _searchHistory = await _searchService.getSearchHistory();
       }
 
-      // Load trending posts
       _trendingPosts = await _searchService.getTrendingPosts();
-
-      // Load categories
       _categories = await _searchService.getCategories();
-
-      // Load trending searches
       _trendingSearches = await _searchService.getTrendingSearches();
 
     } catch (e) {
       print('Error loading initial data: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading data: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isSearching = false);
@@ -82,6 +79,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
   Future<void> _performSearch(String query) async {
     if (query.trim().isEmpty) return;
 
+    if (!mounted) return;
     setState(() {
       _isSearching = true;
       _showResults = true;
@@ -91,16 +89,13 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-      // Save to search history (only for logged-in users)
       if (!authProvider.isGuest) {
         await _searchService.saveSearchHistory(query);
-        // Refresh search history
         _searchHistory = await _searchService.getSearchHistory();
       }
 
       List<Map<String, dynamic>> allResults = [];
 
-      // Search based on active tab
       if (_activeTab == 'all' || _activeTab == 'users') {
         final users = await _searchService.searchUsers(query);
         allResults.addAll(users);
@@ -114,25 +109,28 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
         allResults.addAll(posts);
       }
 
-      // Sort results: users first, then posts
       allResults.sort((a, b) {
         if (a['type'] == 'user' && b['type'] != 'user') return -1;
         if (a['type'] != 'user' && b['type'] == 'user') return 1;
         return 0;
       });
 
-      setState(() {
-        _searchResults = allResults;
-      });
+      if (mounted) {
+        setState(() {
+          _searchResults = allResults;
+        });
+      }
 
     } catch (e) {
       print('Search error: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Search failed: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Search failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
       if (mounted) {
         setState(() => _isSearching = false);
@@ -152,15 +150,17 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
   void _clearSearchHistory() async {
     try {
       await _searchService.clearSearchHistory();
-      setState(() {
-        _searchHistory.clear();
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Search history cleared'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (mounted) {
+        setState(() {
+          _searchHistory.clear();
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Search history cleared'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (e) {
       print('Error clearing history: $e');
     }
@@ -169,9 +169,11 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
   void _deleteSearchItem(String query) async {
     try {
       await _searchService.deleteSearchItem(query);
-      setState(() {
-        _searchHistory.remove(query);
-      });
+      if (mounted) {
+        setState(() {
+          _searchHistory.remove(query);
+        });
+      }
     } catch (e) {
       print('Error deleting search item: $e');
     }
@@ -218,7 +220,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
       MaterialPageRoute(
         builder: (context) => OtherUserProfileScreen(
           userId: userId,
-          userName: '', // Will be loaded from Firestore
+          userName: '',
           userAvatar: '👤',
         ),
       ),
@@ -246,8 +248,10 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
       },
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Stack(
+            alignment: Alignment.center,
             children: [
               Icon(
                 icon,
@@ -289,7 +293,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // Required for AutomaticKeepAliveClientMixin
+    super.build(context);
 
     final authProvider = Provider.of<AuthProvider>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
@@ -374,7 +378,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
               ),
             ),
 
-            // Search Tabs (only when showing results)
+            // Search Tabs
             if (_showResults)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
@@ -594,12 +598,16 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
 
         const SizedBox(height: 10),
 
-        // Results List
+        // Results List - FIXED EMPTY STATE
         Expanded(
           child: _isSearching
               ? Center(child: CircularProgressIndicator(color: AppColors.primary))
               : _searchResults.isEmpty
-              ? _buildEmptyState(isDarkMode)
+              ? Center(
+            child: SingleChildScrollView(
+              child: _buildEmptyState(isDarkMode),
+            ),
+          )
               : ListView.builder(
             padding: const EdgeInsets.all(20),
             itemCount: _searchResults.length,
@@ -669,7 +677,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
             ),
             const SizedBox(height: 20),
 
-            // Recent Searches (for logged-in users)
+            // Recent Searches
             if (!isGuest && _searchHistory.isNotEmpty) ...[
               _buildRecentSearchesSection(isDarkMode),
               const SizedBox(height: 20),
@@ -683,7 +691,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
             _buildTrendingSearchesSection(isDarkMode),
             const SizedBox(height: 20),
 
-            // Browse Categories
+            // Browse Categories - NOW CLICKABLE!
             _buildCategoriesSection(isDarkMode),
             const SizedBox(height: 40),
           ],
@@ -693,33 +701,33 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
   }
 
   Widget _buildEmptyState(bool isDarkMode) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.search_off,
-            size: 80,
-            color: isDarkMode ? Colors.grey[600] : Colors.grey[300],
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          Icons.search_off,
+          size: 80,
+          color: isDarkMode ? Colors.grey[600] : Colors.grey[300],
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'No results found',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? AppColors.lightSurface : AppColors.accent,
           ),
-          const SizedBox(height: 20),
-          Text(
-            'No results found',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? AppColors.lightSurface : AppColors.accent,
-            ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Try a different search term',
+          style: TextStyle(
+            color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
           ),
-          const SizedBox(height: 10),
-          Text(
-            'Try a different search term',
-            style: TextStyle(
-              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 20),
+      ],
     );
   }
 
@@ -925,6 +933,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
     );
   }
 
+  // FIXED: Categories Section with CLICKABLE cards
   Widget _buildCategoriesSection(bool isDarkMode) {
     if (_categories.isEmpty) {
       return const SizedBox.shrink();
@@ -961,10 +970,18 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
               scrollDirection: Axis.horizontal,
               children: _categories.map((category) {
                 return _CategoryCard(
-                  category['icon'] ?? Icons.category,
-                  category['name'] ?? 'Category',
-                  category['count'] ?? '0',
-                  isDarkMode,
+                  icon: category['icon'] ?? Icons.category,
+                  title: category['name'] ?? 'Category',
+                  count: category['count'] ?? '0',
+                  isDarkMode: isDarkMode,
+                  onTap: () {
+                    setState(() {
+                      _searchController.text = category['name'] ?? '';
+                      _activeTab = 'videos'; // Switch to videos tab
+                      _showResults = true; // Show results
+                    });
+                    _performSearch(category['name'] ?? '');
+                  },
                 );
               }).toList(),
             ),
@@ -974,12 +991,13 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
     );
   }
 
+  // FIXED USER RESULT CARD - NO OVERFLOW
   Widget _buildUserResultCard(Map<String, dynamic> user, bool isGuest, bool isDarkMode) {
     return GestureDetector(
       onTap: () => _viewUserProfile(user['id']),
       child: Container(
         margin: const EdgeInsets.only(bottom: 15),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isDarkMode ? const Color(0xFF2C2C2C) : AppColors.lightSurface,
           borderRadius: BorderRadius.circular(16),
@@ -990,15 +1008,13 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
               offset: const Offset(0, 4),
             ),
           ],
-          border: Border.all(
-            color: AppColors.accent.withOpacity(0.1),
-          ),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Profile Picture
             CircleAvatar(
-              radius: 30,
+              radius: 28,
               backgroundColor: AppColors.primary.withOpacity(0.2),
               backgroundImage: user['profilePic'] != null && user['profilePic'].toString().isNotEmpty
                   ? NetworkImage(user['profilePic'])
@@ -1006,16 +1022,17 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
               child: user['profilePic'] == null || user['profilePic'].toString().isEmpty
                   ? Text(
                 user['name']?.toString().substring(0, 1).toUpperCase() ?? '?',
-                style: const TextStyle(fontSize: 24, color: AppColors.primary),
+                style: const TextStyle(fontSize: 20, color: AppColors.primary),
               )
                   : null,
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
 
             // User Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     user['name'] ?? 'Unknown',
@@ -1024,21 +1041,25 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
                       fontWeight: FontWeight.bold,
                       color: isDarkMode ? AppColors.lightSurface : AppColors.accent,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     '@${user['username'] ?? 'username'}',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 13,
                       color: AppColors.primary,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   if (user['bio'] != null && user['bio'].toString().isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       user['bio'],
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                       ),
                       maxLines: 1,
@@ -1049,15 +1070,17 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
               ),
             ),
 
-            // Follow/Message buttons could be added here
+            const SizedBox(width: 8),
+
+            // Private indicator
             if (user['isPrivate'] == true)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: Colors.grey.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
+                  shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.lock, size: 16, color: Colors.grey),
+                child: const Icon(Icons.lock, size: 14, color: Colors.grey),
               ),
           ],
         ),
@@ -1078,9 +1101,6 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(
-          color: AppColors.accent.withOpacity(0.1),
-        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1089,7 +1109,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
           Stack(
             children: [
               Container(
-                height: 180,
+                height: 160,
                 width: double.infinity,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -1117,11 +1137,11 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.videocam, size: 40, color: AppColors.primary),
-                          const SizedBox(height: 10),
+                          Icon(Icons.videocam, size: 30, color: AppColors.primary),
+                          const SizedBox(height: 5),
                           Text(
                             'Video Preview',
-                            style: TextStyle(color: AppColors.primary),
+                            style: TextStyle(fontSize: 12, color: AppColors.primary),
                           ),
                         ],
                       ),
@@ -1131,38 +1151,38 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
               ),
               if (video['duration'] != null)
                 Positioned(
-                  bottom: 10,
-                  right: 10,
+                  bottom: 8,
+                  right: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                     decoration: BoxDecoration(
                       color: AppColors.textMain.withOpacity(0.7),
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       video['duration'],
                       style: const TextStyle(
                         color: AppColors.lightSurface,
-                        fontSize: 12,
+                        fontSize: 10,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ),
               Positioned(
-                top: 10,
-                left: 10,
+                top: 8,
+                left: 8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
                     color: _getPlatformColor(video['platform'] ?? 'YouTube'),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     video['platform'] ?? 'Unknown',
                     style: const TextStyle(
                       color: AppColors.lightSurface,
-                      fontSize: 10,
+                      fontSize: 9,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1173,27 +1193,27 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
 
           // Video Info
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   video['caption'] ?? video['title'] ?? 'Untitled',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.bold,
                     color: isDarkMode ? AppColors.lightSurface : AppColors.accent,
                   ),
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 GestureDetector(
                   onTap: () => _viewUserProfile(video['userId']),
                   child: Row(
                     children: [
                       CircleAvatar(
-                        radius: 14,
+                        radius: 12,
                         backgroundColor: AppColors.primary.withOpacity(0.2),
                         backgroundImage: video['user_profile_pic'] != null && video['user_profile_pic'].toString().isNotEmpty
                             ? NetworkImage(video['user_profile_pic'])
@@ -1201,47 +1221,51 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
                         child: video['user_profile_pic'] == null || video['user_profile_pic'].toString().isEmpty
                             ? Text(
                           video['user_name']?.toString().substring(0, 1).toUpperCase() ?? '?',
-                          style: const TextStyle(fontSize: 12, color: AppColors.primary),
+                          style: const TextStyle(fontSize: 10, color: AppColors.primary),
                         )
                             : null,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        video['user_name'] ?? 'Unknown',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          video['user_name'] ?? 'Unknown',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Row(
                   children: [
-                    Icon(Icons.favorite, size: 14, color: Colors.red),
-                    const SizedBox(width: 4),
+                    Icon(Icons.favorite, size: 12, color: Colors.red),
+                    const SizedBox(width: 2),
                     Text(
                       video['likes']?.toString() ?? '0',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Icon(Icons.comment, size: 14, color: Colors.blue),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 12),
+                    Icon(Icons.comment, size: 12, color: Colors.blue),
+                    const SizedBox(width: 2),
                     Text(
                       video['comments']?.toString() ?? '0',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
 
                 // Download Button
                 if (video['canDownload'] == true && !isGuest)
@@ -1249,17 +1273,17 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () => _downloadContent(video),
-                      icon: const Icon(Icons.download_rounded, size: 20),
+                      icon: const Icon(Icons.download_rounded, size: 16),
                       label: const Text(
                         "Download",
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: AppColors.lightSurface,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
                     ),
@@ -1278,28 +1302,25 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
         // Navigate to video detail
       },
       child: Container(
-        width: 200,
-        margin: const EdgeInsets.only(right: 15),
+        width: 180,
+        margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
           color: isDarkMode ? const Color(0xFF2C2C2C) : AppColors.lightSurface,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
               color: Colors.grey.withOpacity(isDarkMode ? 0.3 : 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
           ],
-          border: Border.all(
-            color: AppColors.accent.withOpacity(0.1),
-          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Thumbnail
             Container(
-              height: 120,
+              height: 100,
               width: double.infinity,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -1309,8 +1330,8 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
                   ],
                 ),
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
                 ),
               ),
               child: Image.network(
@@ -1324,7 +1345,7 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
                 },
                 errorBuilder: (context, error, stackTrace) {
                   return Center(
-                    child: Icon(Icons.videocam, size: 40, color: AppColors.primary),
+                    child: Icon(Icons.videocam, size: 30, color: AppColors.primary),
                   );
                 },
               ),
@@ -1332,57 +1353,57 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
 
             // Video Info
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     video['caption'] ?? video['title'] ?? 'Untitled',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: isDarkMode ? AppColors.lightSurface : AppColors.accent,
                     ),
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     '@${video['user_name'] ?? 'Unknown'}',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 10,
                       color: AppColors.primary,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.favorite, size: 12, color: Colors.red),
+                          const Icon(Icons.favorite, size: 10, color: Colors.red),
                           const SizedBox(width: 2),
                           Text(
                             video['likes']?.toString() ?? '0',
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 9,
                               color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                             ),
                           ),
                         ],
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                         decoration: BoxDecoration(
                           color: Colors.orange.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
                           "Trending",
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 8,
                             color: Colors.orange[800],
                             fontWeight: FontWeight.bold,
                           ),
@@ -1408,23 +1429,17 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
         _performSearch(trend);
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightSurface,
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.primary, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(isDarkMode ? 0.2 : 0.1),
-              blurRadius: 3,
-            ),
-          ],
         ),
         child: Text(
           trend,
           style: TextStyle(
             color: AppColors.primary,
-            fontSize: 13,
+            fontSize: 12,
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -1506,61 +1521,69 @@ class _SearchDiscoverScreenState extends State<SearchDiscoverScreen> with Automa
   }
 }
 
+// FIXED: Category Card with onTap
 class _CategoryCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String count;
   final bool isDarkMode;
+  final VoidCallback? onTap;
 
-  const _CategoryCard(this.icon, this.title, this.count, this.isDarkMode);
+  const _CategoryCard({
+    required this.icon,
+    required this.title,
+    required this.count,
+    required this.isDarkMode,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 110,
-      margin: const EdgeInsets.only(right: 15),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightSurface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(isDarkMode ? 0.3 : 0.1),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 28,
-            color: AppColors.primary,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? AppColors.lightSurface : AppColors.accent,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 100,
+        margin: const EdgeInsets.only(right: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isDarkMode ? const Color(0xFF1E1E1E) : AppColors.lightSurface,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(isDarkMode ? 0.3 : 0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
             ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            "$count videos",
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.primary,
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 24, color: AppColors.primary),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? AppColors.lightSurface : AppColors.accent,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+            Text(
+              "$count videos",
+              style: TextStyle(
+                fontSize: 9,
+                color: AppColors.primary,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
   }

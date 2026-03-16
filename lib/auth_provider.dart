@@ -531,167 +531,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // ============= 🔥 FACEBOOK SIGN IN =============
-  Future<Map<String, dynamic>> signInWithFacebook() async {
-    try {
-      debugPrint('\n🔵🔵🔵=== STARTING FACEBOOK SIGN IN ===🔵🔵🔵');
 
-      // Step 1: Try to login with Facebook
-      debugPrint('🟡 Step 1: Attempting Facebook login...');
-      final LoginResult loginResult = await FacebookAuth.instance.login(
-        permissions: ['email', 'public_profile'],
-      );
-
-      debugPrint('📊 Login Result Status: ${loginResult.status}');
-      debugPrint('📊 Access Token: ${loginResult.accessToken != null ? 'Received' : 'Null'}');
-
-      if (loginResult.status != LoginStatus.success) {
-        debugPrint('❌ Facebook login failed with status: ${loginResult.status}');
-        if (loginResult.status == LoginStatus.cancelled) {
-          debugPrint('👤 User cancelled the login');
-          return {
-            'success': false,
-            'message': 'Facebook sign in cancelled'
-          };
-        } else if (loginResult.status == LoginStatus.failed) {
-          debugPrint('❌ Facebook login failed');
-          return {
-            'success': false,
-            'message': 'Facebook sign in failed'
-          };
-        }
-      }
-
-      debugPrint('✅ Step 1 complete: Facebook login successful');
-
-      // Step 2: Get user data from Facebook
-      debugPrint('\n🟡 Step 2: Getting Facebook user data...');
-      final userData = await FacebookAuth.instance.getUserData(
-        fields: "email,name,picture",
-      );
-      debugPrint('📧 Facebook email: ${userData['email']}');
-      debugPrint('👤 Facebook name: ${userData['name']}');
-      debugPrint('🖼️ Facebook picture: ${userData['picture'] != null ? 'Yes' : 'No'}');
-      debugPrint('✅ Step 2 complete: Got user data');
-
-      // Step 3: Create Firebase credential
-      debugPrint('\n🟡 Step 3: Creating Firebase credential...');
-      debugPrint('🔑 Access Token: ${loginResult.accessToken!.token.substring(0, 10)}...'); // Print first 10 chars only
-
-      final OAuthCredential credential = FacebookAuthProvider.credential(
-        loginResult.accessToken!.token,
-      );
-      debugPrint('✅ Step 3 complete: Firebase credential created');
-
-      // Step 4: Sign in to Firebase
-      debugPrint('\n🟡 Step 4: Signing in to Firebase...');
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
-      debugPrint('✅ Firebase sign in successful!');
-      debugPrint('📱 User UID: ${userCredential.user!.uid}');
-      debugPrint('📧 Firebase Email: ${userCredential.user!.email}');
-      debugPrint('👤 Firebase Name: ${userCredential.user!.displayName}');
-      debugPrint('✅ Step 4 complete: Firebase sign in');
-
-      // Get user data from Facebook
-      final facebookUserData = await FacebookAuth.instance.getUserData(
-        fields: "email,name,picture",
-      );
-
-      // Check if user exists in Firestore
-      DocumentReference userRef = _firestore.collection('users').doc(userCredential.user!.uid);
-      DocumentSnapshot userDoc = await userRef.get();
-
-      bool isNewUser = !userDoc.exists;
-
-      if (isNewUser) {
-        String baseUsername = facebookUserData['email']?.split('@')[0] ??
-            facebookUserData['name']?.toLowerCase().replaceAll(' ', '_') ??
-            'user';
-        String finalUsername = baseUsername.toLowerCase();
-
-        int counter = 1;
-        while (await checkUsernameExists(finalUsername)) {
-          finalUsername = '${baseUsername.toLowerCase()}$counter';
-          counter++;
-        }
-
-        Map<String, dynamic> newUserData = {
-          'uid': userCredential.user!.uid,
-          'name': facebookUserData['name'] ?? userCredential.user?.displayName ?? '',
-          'email': facebookUserData['email'] ?? userCredential.user?.email ?? '',
-          'username': finalUsername,
-          'phone': '',
-          'recoveryEmail': '',
-          'dob': '',
-          'gender': '',
-          'photoURL': userCredential.user?.photoURL ?? '',
-          'isActive': true,
-          'isVerified': true,
-          'emailVerified': true,
-          'accountType': 'user',
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-          'lastLogin': FieldValue.serverTimestamp(),
-          'platform': defaultTargetPlatform == TargetPlatform.android ? 'android' :
-          defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'web',
-          'totalLogins': 1,
-          'preferences': {
-            'language': 'en',
-            'theme': 'system',
-            'notifications': true,
-            'marketing': false,
-          },
-        };
-        await userRef.set(newUserData);
-        _userData = newUserData;
-        debugPrint('✅ New Facebook user document created with username: $finalUsername');
-      } else {
-        _userData = userDoc.data() as Map<String, dynamic>;
-        await userRef.update({
-          'lastLogin': FieldValue.serverTimestamp(),
-          'totalLogins': FieldValue.increment(1),
-          'lastActiveAt': FieldValue.serverTimestamp(),
-          'photoURL': userCredential.user?.photoURL ?? _userData['photoURL'],
-        });
-        debugPrint('✅ Existing Facebook user updated');
-      }
-
-      _userId = userCredential.user?.uid ?? '';
-      _userEmail = facebookUserData['email'] ?? userCredential.user?.email ?? '';
-      _userName = facebookUserData['name'] ?? userCredential.user?.displayName ?? '';
-      _isLoggedIn = true;
-      _isGuest = false;
-      _isNewSignUp = isNewUser;
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('user_id', _userId);
-      await prefs.setString('user_email', _userEmail);
-      await prefs.setString('user_name', _userName);
-      await prefs.setBool('is_logged_in', true);
-      await prefs.setBool('is_guest', false);
-      await prefs.setBool('is_new_signup', isNewUser);
-
-      notifyListeners();
-      debugPrint('🎉🎉🎉=== Facebook Sign In Complete ===🎉🎉🎉\n');
-
-      return {
-        'success': true,
-        'message': 'Facebook sign in successful!',
-        'isNewUser': isNewUser
-      };
-
-    } on FirebaseAuthException catch (e) {
-      debugPrint('\n❌❌❌ FIREBASE AUTH ERROR:');
-      debugPrint('Code: ${e.code}');
-      debugPrint('Message: ${e.message}');
-      return {'success': false, 'message': 'Firebase error: ${e.message}'};
-    } catch (e) {
-      debugPrint('\n❌❌❌ UNEXPECTED ERROR:');
-      debugPrint('Error: $e');
-      debugPrint('Type: ${e.runtimeType}');
-      return {'success': false, 'message': 'Error: $e'};
-    }
-  }
 
   // ============= 🔥 RESET PASSWORD =============
   Future<Map<String, dynamic>> resetPassword(String email) async {
@@ -849,7 +689,7 @@ class AuthProvider extends ChangeNotifier {
 
       await _auth.signOut();
       await _googleSignIn.signOut();
-      await _facebookAuth.logOut();
+
 
       _isGuest = false;
       _isLoggedIn = false;
@@ -933,8 +773,7 @@ class AuthProvider extends ChangeNotifier {
   Future<Map<String, dynamic>> socialLogin(String platform) async {
     if (platform == 'Google') {
       return await signInWithGoogle();
-    } else if (platform == 'Facebook') {
-      return await signInWithFacebook();
+
     } else {
       return {'success': false, 'message': '$platform login coming soon!'};
     }

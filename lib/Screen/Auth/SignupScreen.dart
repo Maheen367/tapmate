@@ -7,7 +7,6 @@ import 'package:tapmate/Screen/constants/app_colors.dart';
 import 'package:tapmate/auth_provider.dart';
 import 'dart:async';
 import 'email_otp_screen.dart';
-import 'package:tapmate/auth_wrapper.dart';  // 🔥 YEH IMPORT HONA CHAHIYE
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -17,7 +16,7 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  // Controllers - ALL FIELDS (all are now required)
+  // Controllers
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -25,9 +24,17 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
-  final TextEditingController _recoveryEmailController = TextEditingController();
 
-  // Error messages for ALL fields
+  // Focus Nodes
+  final FocusNode _nameFocusNode = FocusNode();
+  final FocusNode _emailFocusNode = FocusNode();
+  final FocusNode _usernameFocusNode = FocusNode();
+  final FocusNode _passwordFocusNode = FocusNode();
+  final FocusNode _confirmPasswordFocusNode = FocusNode();
+  final FocusNode _phoneFocusNode = FocusNode();
+  final FocusNode _dobFocusNode = FocusNode();
+
+  // Error messages
   String? _nameError;
   String? _emailError;
   String? _passwordError;
@@ -35,9 +42,20 @@ class _SignupScreenState extends State<SignupScreen> {
   String? _usernameError;
   String? _phoneError;
   String? _dobError;
-  String? _recoveryEmailError;
   String? _genderError;
   String? _signupError;
+
+  // Track which fields are touched
+  final Map<String, bool> _fieldTouched = {
+    'name': false,
+    'email': false,
+    'username': false,
+    'password': false,
+    'confirmPassword': false,
+    'phone': false,
+    'dob': false,
+    'gender': false,
+  };
 
   // Variables
   bool _obscurePassword = true;
@@ -50,20 +68,97 @@ class _SignupScreenState extends State<SignupScreen> {
   // Username checking debouncer
   Timer? _usernameDebounce;
 
-  // ============= VALIDATION METHODS =============
-
-  // FULL NAME - Only alphabets and spaces
-  bool _isValidName(String name) {
-    if (name.isEmpty) return false;
-    final trimmedName = name.trim();
-    final nameWithoutSpaces = trimmedName.replaceAll(' ', '');
-    final nameRegex = RegExp(r'^[a-zA-Z\s]+$');
-    return nameWithoutSpaces.length >= 2 &&
-        trimmedName.length <= 50 &&
-        nameRegex.hasMatch(trimmedName);
+  @override
+  void initState() {
+    super.initState();
+    _setupFocusListeners();
   }
 
-  // EMAIL - Professional format
+  void _setupFocusListeners() {
+    _nameFocusNode.addListener(() {
+      if (!_nameFocusNode.hasFocus && _fieldTouched['name']!) {
+        _validateOnBlur('name');
+      }
+    });
+    _emailFocusNode.addListener(() {
+      if (!_emailFocusNode.hasFocus && _fieldTouched['email']!) {
+        _validateOnBlur('email');
+      }
+    });
+    _usernameFocusNode.addListener(() {
+      if (!_usernameFocusNode.hasFocus && _fieldTouched['username']!) {
+        _validateOnBlur('username');
+      }
+    });
+    _passwordFocusNode.addListener(() {
+      if (!_passwordFocusNode.hasFocus && _fieldTouched['password']!) {
+        _validateOnBlur('password');
+      }
+    });
+    _confirmPasswordFocusNode.addListener(() {
+      if (!_confirmPasswordFocusNode.hasFocus && _fieldTouched['confirmPassword']!) {
+        _validateOnBlur('confirmPassword');
+      }
+    });
+    _phoneFocusNode.addListener(() {
+      if (!_phoneFocusNode.hasFocus && _fieldTouched['phone']!) {
+        _validateOnBlur('phone');
+      }
+    });
+  }
+
+  void _validateOnBlur(String field) {
+    setState(() {
+      switch (field) {
+        case 'name':
+          final name = _nameController.text.trim();
+          if (name.isEmpty) {
+            _nameError = "*";
+          } else {
+            _nameError = null;
+          }
+          break;
+        case 'email':
+          final email = _emailController.text.trim();
+          if (email.isEmpty) {
+            _emailError = "*";
+          } else {
+            _emailError = null;
+          }
+          break;
+        case 'username':
+          final username = _usernameController.text.trim();
+          if (username.isEmpty) {
+            _usernameError = "*";
+          } else {
+            _usernameError = null;
+          }
+          break;
+        case 'password':
+          if (_passwordController.text.isEmpty) {
+            _passwordError = "*";
+          } else {
+            _passwordError = null;
+          }
+          break;
+        case 'confirmPassword':
+          if (_confirmPasswordController.text.isEmpty) {
+            _confirmPasswordError = "*";
+          } else {
+            _confirmPasswordError = null;
+          }
+          break;
+        case 'phone':
+          if (_phoneController.text.isEmpty) {
+            _phoneError = "*";
+          } else {
+            _phoneError = null;
+          }
+          break;
+      }
+    });
+  }
+
   bool _isValidEmail(String email) {
     if (email.isEmpty) return false;
     final emailRegex = RegExp(
@@ -72,25 +167,17 @@ class _SignupScreenState extends State<SignupScreen> {
     return emailRegex.hasMatch(email);
   }
 
-  // USERNAME - Letters, numbers, underscore only
   bool _isValidUsername(String username) {
     if (username.isEmpty) return false;
     return RegExp(r'^[a-zA-Z0-9_]{3,20}$').hasMatch(username);
   }
 
-  // Phone validation - REQUIRED
   bool _isValidPhone(String phone) {
     if (phone.isEmpty) return false;
     final digitsOnly = phone.replaceAll(RegExp(r'[^0-9]'), '');
     return digitsOnly.length >= 10 && digitsOnly.length <= 15;
   }
 
-  // Recovery Email validation - REQUIRED (same as email)
-  bool _isValidRecoveryEmail(String email) {
-    return _isValidEmail(email);
-  }
-
-  // 🔥 PASSWORD VALIDATION - With conditions
   bool _isValidPassword(String password) {
     if (password.isEmpty) return false;
     return RegExp(
@@ -98,12 +185,10 @@ class _SignupScreenState extends State<SignupScreen> {
     ).hasMatch(password);
   }
 
-  // 🔥 CONFIRM PASSWORD VALIDATION - Check if matches
   bool _doPasswordsMatch() {
     return _passwordController.text == _confirmPasswordController.text;
   }
 
-  // Check if username exists in Firestore
   Future<bool> _checkUsernameExists(String username) async {
     if (username.isEmpty) return false;
     try {
@@ -115,183 +200,19 @@ class _SignupScreenState extends State<SignupScreen> {
     }
   }
 
-  // 🔥 UPDATED: Validate inputs - ALL FIELDS REQUIRED including Gender
-  Future<void> _validateInputs() async {
-    setState(() {
-      _signupError = null;
-
-      // ===== NAME VALIDATION =====
-      final name = _nameController.text.trim();
-      String cleanName = name.replaceAll(RegExp(r'[^a-zA-Z\s]'), '');
-      cleanName = cleanName.replaceAll(RegExp(r'\s+'), ' ').trim();
-
-      if (name != cleanName) {
-        _nameController.text = cleanName;
-        _nameController.selection = TextSelection.collapsed(
-          offset: cleanName.length,
-        );
-      }
-
-      if (cleanName.isEmpty) {
-        _nameError = "⚠️ Full Name is required";
-      } else if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(cleanName)) {
-        _nameError = "⚠️ Only letters and spaces allowed";
-      } else {
-        _nameError = null;
-      }
-
-      // ===== EMAIL VALIDATION =====
-      final email = _emailController.text.trim().toLowerCase();
-      final cleanEmail = email.replaceAll(' ', '');
-
-      if (email != cleanEmail) {
-        _emailController.text = cleanEmail;
-        _emailController.selection = TextSelection.collapsed(
-          offset: cleanEmail.length,
-        );
-      }
-
-      if (cleanEmail.isEmpty) {
-        _emailError = "⚠️ Email is required";
-      } else if (cleanEmail.contains(' ')) {
-        _emailError = "⚠️ Email cannot contain spaces";
-      } else if (!cleanEmail.contains('@')) {
-        _emailError = "⚠️ Email must contain @ symbol";
-      } else if (!cleanEmail.contains('.')) {
-        _emailError = "⚠️ Email must contain domain (e.g., .com, .org)";
-      } else if (cleanEmail.startsWith('@')) {
-        _emailError = "⚠️ Email must have name before @";
-      } else if (cleanEmail.endsWith('.')) {
-        _emailError = "⚠️ Email cannot end with dot";
-      } else if (cleanEmail.contains('..')) {
-        _emailError = "⚠️ Email cannot contain consecutive dots";
-      } else if (!_isValidEmail(cleanEmail)) {
-        _emailError = "⚠️ Enter a valid email address";
-      } else {
-        _emailError = null;
-      }
-
-      // ===== USERNAME VALIDATION =====
-      final username = _usernameController.text.trim().toLowerCase();
-      _usernameController.text = username;
-
-      if (username.isEmpty) {
-        _usernameError = "⚠️ Username is required";
-      } else if (username.length < 3) {
-        _usernameError = "⚠️ Username must be at least 3 characters";
-      } else if (username.length > 20) {
-        _usernameError = "⚠️ Username must be less than 20 characters";
-      } else if (!RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(username)) {
-        _usernameError = "⚠️ Only letters, numbers, and underscores allowed";
-      } else {
-        _usernameError = null;
-      }
-
-      // ===== 🔥 PASSWORD VALIDATION =====
-      final password = _passwordController.text;
-
-      if (password.isEmpty) {
-        _passwordError = "⚠️ Password is required";
-      } else if (password.length < 8) {
-        _passwordError = "⚠️ Password must be at least 8 characters";
-      } else if (!RegExp(r'(?=.*[a-z])').hasMatch(password)) {
-        _passwordError = "⚠️ Password must contain at least one lowercase letter";
-      } else if (!RegExp(r'(?=.*[A-Z])').hasMatch(password)) {
-        _passwordError = "⚠️ Password must contain at least one uppercase letter";
-      } else if (!RegExp(r'(?=.*\d)').hasMatch(password)) {
-        _passwordError = "⚠️ Password must contain at least one number";
-      } else if (!RegExp(r'(?=.*[@$!%*?&])').hasMatch(password)) {
-        _passwordError = "⚠️ Password must contain at least one special character (@, !, #, \$, %, etc.)";
-      } else {
-        _passwordError = null;
-      }
-
-      // ===== 🔥 CONFIRM PASSWORD VALIDATION =====
-      final confirmPassword = _confirmPasswordController.text;
-
-      if (confirmPassword.isEmpty) {
-        _confirmPasswordError = "⚠️ Please confirm your password";
-      } else if (password != confirmPassword) {
-        _confirmPasswordError = "⚠️ Passwords do not match";
-      } else {
-        _confirmPasswordError = null;
-      }
-
-      // ===== PHONE VALIDATION - REQUIRED =====
-      final phone = _phoneController.text.trim();
-      final digitsOnly = phone.replaceAll(RegExp(r'[^0-9]'), '');
-
-      if (phone.isEmpty) {
-        _phoneError = "⚠️ Phone number is required";
-      } else if (digitsOnly.length < 11) {
-        _phoneError = "⚠️ Phone number must be at least 11 digits";
-      } else {
-        _phoneError = null;
-      }
-
-      // ===== DOB VALIDATION =====
-      if (_selectedDate == null) {
-        _dobError = "⚠️ Date of Birth is required";
-      } else {
-        _dobError = null;
-      }
-
-      // ===== GENDER VALIDATION - NOW REQUIRED =====
-      if (_selectedGender == null || _selectedGender!.isEmpty) {
-        _genderError = "⚠️ Please select your gender";
-      } else {
-        _genderError = null;
-      }
-
-      // ===== RECOVERY EMAIL VALIDATION - REQUIRED (same as email) =====
-      final recoveryEmail = _recoveryEmailController.text.trim().toLowerCase();
-      final cleanRecoveryEmail = recoveryEmail.replaceAll(' ', '');
-
-      if (recoveryEmail != cleanRecoveryEmail) {
-        _recoveryEmailController.text = cleanRecoveryEmail;
-        _recoveryEmailController.selection = TextSelection.collapsed(
-          offset: cleanRecoveryEmail.length,
-        );
-      }
-
-      if (cleanRecoveryEmail.isEmpty) {
-        _recoveryEmailError = "⚠️ Recovery Email is required";
-      } else if (cleanRecoveryEmail.contains(' ')) {
-        _recoveryEmailError = "⚠️ Recovery Email cannot contain spaces";
-      } else if (!cleanRecoveryEmail.contains('@')) {
-        _recoveryEmailError = "⚠️ Recovery Email must contain @ symbol";
-      } else if (!cleanRecoveryEmail.contains('.')) {
-        _recoveryEmailError = "⚠️ Recovery Email must contain domain (e.g., .com, .org)";
-      } else if (cleanRecoveryEmail.startsWith('@')) {
-        _recoveryEmailError = "⚠️ Recovery Email must have name before @";
-      } else if (cleanRecoveryEmail.endsWith('.')) {
-        _recoveryEmailError = "⚠️ Recovery Email cannot end with dot";
-      } else if (cleanRecoveryEmail.contains('..')) {
-        _recoveryEmailError = "⚠️ Recovery Email cannot contain consecutive dots";
-      } else if (!_isValidRecoveryEmail(cleanRecoveryEmail)) {
-        _recoveryEmailError = "⚠️ Enter a valid recovery email address";
-      } else {
-        _recoveryEmailError = null;
-      }
-    });
-
-    // Check username uniqueness asynchronously
-    if (_usernameError == null && _usernameController.text.trim().isNotEmpty) {
-      final username = _usernameController.text.trim().toLowerCase();
-      final exists = await _checkUsernameExists(username);
-      if (exists) {
-        setState(() {
-          _usernameError = "⚠️ This username is already taken. Please choose another.";
-        });
-      }
-    }
-  }
-
-  // Debounced username validation
   void _onUsernameChanged(String value) {
+    _fieldTouched['username'] = true;
     _usernameDebounce?.cancel();
     _usernameDebounce = Timer(const Duration(milliseconds: 500), () {
-      _validateInputs();
+      if (_usernameController.text.isNotEmpty) {
+        _checkUsernameExists(value).then((exists) {
+          if (exists && mounted) {
+            setState(() {
+              _usernameError = "* This username is already taken";
+            });
+          }
+        });
+      }
     });
   }
 
@@ -320,8 +241,9 @@ class _SignupScreenState extends State<SignupScreen> {
         _selectedDate = picked;
         _dobController.text =
         "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+        _fieldTouched['dob'] = true;
+        _dobError = null;
       });
-      _validateInputs();
     }
   }
 
@@ -351,7 +273,6 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  // Snackbar methods
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -403,35 +324,117 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  // ============= 🔥🔥🔥 UPDATED SIGN UP METHOD =============
+  // ============= FIXED SIGN UP METHOD =============
   void _signUp() async {
-    await _validateInputs();
+    // Mark all fields as touched
+    setState(() {
+      _fieldTouched.updateAll((key, value) => true);
+    });
 
+    // 🔥 VALIDATE ALL FIELDS ON SUBMIT
+    bool hasError = false;
+
+    // Name validation
+    if (_nameController.text.trim().isEmpty) {
+      setState(() => _nameError = "*");
+      hasError = true;
+    } else {
+      setState(() => _nameError = null);
+    }
+
+    // Email validation
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      setState(() => _emailError = "*");
+      hasError = true;
+    } else if (!_isValidEmail(email)) {
+      setState(() => _emailError = "* Invalid email format");
+      hasError = true;
+    } else {
+      setState(() => _emailError = null);
+    }
+
+    // Username validation
+    final username = _usernameController.text.trim();
+    if (username.isEmpty) {
+      setState(() => _usernameError = "*");
+      hasError = true;
+    } else if (!_isValidUsername(username)) {
+      setState(() => _usernameError = "* Username must be 3-20 chars (letters, numbers, _)");
+      hasError = true;
+    } else {
+      setState(() => _usernameError = null);
+    }
+
+    // Password validation
+    final password = _passwordController.text;
+    if (password.isEmpty) {
+      setState(() => _passwordError = "*");
+      hasError = true;
+    } else if (!_isValidPassword(password)) {
+      setState(() => _passwordError = "* Password must have: 8+ chars, upper, lower, number, special");
+      hasError = true;
+    } else {
+      setState(() => _passwordError = null);
+    }
+
+    // Confirm password validation
+    final confirmPassword = _confirmPasswordController.text;
+    if (confirmPassword.isEmpty) {
+      setState(() => _confirmPasswordError = "*");
+      hasError = true;
+    } else if (password != confirmPassword) {
+      setState(() => _confirmPasswordError = "* Passwords do not match");
+      hasError = true;
+    } else {
+      setState(() => _confirmPasswordError = null);
+    }
+
+    // Phone validation
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty) {
+      setState(() => _phoneError = "*");
+      hasError = true;
+    } else if (!_isValidPhone(phone)) {
+      setState(() => _phoneError = "* Invalid phone number (10-15 digits)");
+      hasError = true;
+    } else {
+      setState(() => _phoneError = null);
+    }
+
+    // DOB validation
+    if (_selectedDate == null) {
+      setState(() => _dobError = "*");
+      hasError = true;
+    } else {
+      setState(() => _dobError = null);
+    }
+
+    // Gender validation
+    if (_selectedGender == null) {
+      setState(() => _genderError = "*");
+      hasError = true;
+    } else {
+      setState(() => _genderError = null);
+    }
+
+    // Terms validation
     if (!_agreeToTerms) {
       _showErrorSnackBar("Please agree to Terms & Conditions");
       return;
     }
 
-    // 🔥 Check for any validation errors - ALL FIELDS INCLUDED
-    if (_nameError != null ||
-        _emailError != null ||
-        _usernameError != null ||
-        _passwordError != null ||
-        _confirmPasswordError != null ||
-        _phoneError != null ||
-        _dobError != null ||
-        _genderError != null ||
-        _recoveryEmailError != null) {
+    // Agar koi error hai to return
+    if (hasError) {
+      _showErrorSnackBar("Please fill all fields correctly");
+      return;
+    }
 
-      if (_nameError != null) _showErrorSnackBar(_nameError!);
-      else if (_emailError != null) _showErrorSnackBar(_emailError!);
-      else if (_usernameError != null) _showErrorSnackBar(_usernameError!);
-      else if (_passwordError != null) _showErrorSnackBar(_passwordError!);
-      else if (_confirmPasswordError != null) _showErrorSnackBar(_confirmPasswordError!);
-      else if (_phoneError != null) _showErrorSnackBar(_phoneError!);
-      else if (_dobError != null) _showErrorSnackBar(_dobError!);
-      else if (_genderError != null) _showErrorSnackBar(_genderError!);
-      else if (_recoveryEmailError != null) _showErrorSnackBar(_recoveryEmailError!);
+    // Check username exists
+    final usernameExists = await _checkUsernameExists(username);
+    if (usernameExists) {
+      setState(() => _usernameError = "* This username is already taken");
+      _showErrorSnackBar("Username already taken");
       return;
     }
 
@@ -448,7 +451,6 @@ class _SignupScreenState extends State<SignupScreen> {
       final formattedEmail = _emailController.text.trim().toLowerCase();
       final formattedUsername = _usernameController.text.trim().toLowerCase();
       final formattedPhone = _phoneController.text.trim().replaceAll(RegExp(r'[^0-9]'), '');
-      final formattedRecoveryEmail = _recoveryEmailController.text.trim().toLowerCase();
 
       final result = await authProvider.signUpWithEmailPassword(
         name: formattedName,
@@ -458,7 +460,7 @@ class _SignupScreenState extends State<SignupScreen> {
         dob: _selectedDate,
         gender: _selectedGender ?? '',
         username: formattedUsername,
-        recoveryEmail: formattedRecoveryEmail,
+        recoveryEmail: formattedEmail,
       );
 
       if (result['success'] == true) {
@@ -466,11 +468,9 @@ class _SignupScreenState extends State<SignupScreen> {
           setState(() => _signupError = null);
           _showSuccessSnackBar('✅ Account created! Please verify your email.');
 
-          // Clear password fields for security
           _passwordController.clear();
           _confirmPasswordController.clear();
 
-          // Navigate to email verification screen
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -483,10 +483,6 @@ class _SignupScreenState extends State<SignupScreen> {
       } else {
         setState(() => _signupError = result['message']);
         _showErrorSnackBar('❌ ${result['message']}');
-
-        if (result['message']?.contains('username') == true) {
-          FocusScope.of(context).requestFocus(FocusNode());
-        }
       }
     } catch (e) {
       setState(() => _signupError = 'Error: ${e.toString()}');
@@ -529,20 +525,32 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   void dispose() {
     _usernameDebounce?.cancel();
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _usernameController.dispose();
+    _phoneController.dispose();
+    _dobController.dispose();
+    _nameFocusNode.dispose();
+    _emailFocusNode.dispose();
+    _usernameFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    _confirmPasswordFocusNode.dispose();
+    _phoneFocusNode.dispose();
+    _dobFocusNode.dispose();
     super.dispose();
   }
 
-  // 🔥 NEW: Check if form is valid for button visibility - ALL FIELDS INCLUDED
   bool _isFormValid() {
-    return _nameError == null && _nameController.text.isNotEmpty &&
-        _emailError == null && _emailController.text.isNotEmpty &&
-        _usernameError == null && _usernameController.text.isNotEmpty &&
-        _passwordError == null && _passwordController.text.isNotEmpty &&
-        _confirmPasswordError == null && _confirmPasswordController.text.isNotEmpty &&
-        _phoneError == null && _phoneController.text.isNotEmpty &&
-        _dobError == null && _selectedDate != null &&
-        _genderError == null && _selectedGender != null && _selectedGender!.isNotEmpty &&
-        _recoveryEmailError == null && _recoveryEmailController.text.isNotEmpty &&
+    return _nameController.text.isNotEmpty &&
+        _emailController.text.isNotEmpty &&
+        _usernameController.text.isNotEmpty &&
+        _passwordController.text.isNotEmpty &&
+        _confirmPasswordController.text.isNotEmpty &&
+        _phoneController.text.isNotEmpty &&
+        _selectedDate != null &&
+        _selectedGender != null &&
         _agreeToTerms;
   }
 
@@ -557,7 +565,6 @@ class _SignupScreenState extends State<SignupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Back Button
               IconButton(
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.arrow_back, color: AppColors.textMain),
@@ -565,7 +572,6 @@ class _SignupScreenState extends State<SignupScreen> {
                 constraints: const BoxConstraints(),
               ),
 
-              // Error Message
               if (_signupError != null)
                 Container(
                   margin: const EdgeInsets.only(bottom: 15),
@@ -605,7 +611,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
               const SizedBox(height: 10),
 
-              // ===== NEW LOGO WITH GRADIENT =====
               Center(
                 child: Container(
                   width: 100,
@@ -637,7 +642,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
               const SizedBox(height: 20),
 
-              // Title
               const Center(
                 child: Text(
                   "Create Account",
@@ -658,77 +662,36 @@ class _SignupScreenState extends State<SignupScreen> {
 
               const SizedBox(height: 30),
 
-              // ===== FULL NAME =====
               _buildNameField(),
-
               const SizedBox(height: 15),
-
-              // ===== EMAIL =====
               _buildEmailField(),
-
               const SizedBox(height: 15),
-
-              // ===== USERNAME =====
               _buildUsernameField(),
-
               const SizedBox(height: 15),
-
-              // ===== 🔥 PASSWORD FIELD WITH REQUIREMENTS =====
               _buildPasswordField(),
-
               const SizedBox(height: 15),
-
-              // ===== 🔥 CONFIRM PASSWORD FIELD =====
               _buildConfirmPasswordField(),
-
               const SizedBox(height: 15),
-
-              // ===== PHONE NUMBER - REQUIRED =====
               _buildPhoneField(),
-
               const SizedBox(height: 15),
-
-              // ===== DATE OF BIRTH =====
               _buildDateOfBirthField(),
-
               const SizedBox(height: 15),
-
-              // ===== GENDER SELECTION - NOW REQUIRED =====
               _buildGenderSection(),
-
-              const SizedBox(height: 15),
-
-              // ===== RECOVERY EMAIL - REQUIRED =====
-              _buildRecoveryEmailField(),
-
               const SizedBox(height: 20),
-
-              // ===== TERMS & CONDITIONS =====
               _buildTermsSection(),
-
               const SizedBox(height: 25),
 
-              // ===== SIGN UP BUTTON (Visible only when form is valid) =====
               if (_isFormValid())
                 _buildSignUpButton()
               else
                 _buildDisabledButton(),
 
               const SizedBox(height: 20),
-
-              // ===== DIVIDER =====
               _buildDivider(),
-
               const SizedBox(height: 20),
-
-              // ===== GOOGLE SIGN IN BUTTON ONLY =====
               _buildGoogleSignInButton(),
-
               const SizedBox(height: 25),
-
-              // ===== SIGN IN LINK =====
               _buildSignInLink(),
-
               const SizedBox(height: 20),
             ],
           ),
@@ -736,8 +699,6 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
     );
   }
-
-  // ===== HELPER METHODS =====
 
   Widget _buildNameField() {
     return Container(
@@ -748,6 +709,7 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
       child: TextField(
         controller: _nameController,
+        focusNode: _nameFocusNode,
         onChanged: (value) {
           String cleanName = value.replaceAll(RegExp(r'[^a-zA-Z\s]'), '');
           cleanName = cleanName.replaceAll(RegExp(r'\s+'), ' ');
@@ -757,7 +719,10 @@ class _SignupScreenState extends State<SignupScreen> {
               selection: TextSelection.collapsed(offset: cleanName.length),
             );
           }
-          _validateInputs();
+          _fieldTouched['name'] = true;
+          if (_nameError == "*") {
+            setState(() => _nameError = null);
+          }
         },
         textCapitalization: TextCapitalization.words,
         keyboardType: TextInputType.name,
@@ -789,6 +754,7 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
       child: TextField(
         controller: _emailController,
+        focusNode: _emailFocusNode,
         onChanged: (value) {
           final cleanEmail = value.toLowerCase().replaceAll(' ', '');
           if (value != cleanEmail) {
@@ -797,7 +763,10 @@ class _SignupScreenState extends State<SignupScreen> {
               selection: TextSelection.collapsed(offset: cleanEmail.length),
             );
           }
-          _validateInputs();
+          _fieldTouched['email'] = true;
+          if (_emailError == "*") {
+            setState(() => _emailError = null);
+          }
         },
         keyboardType: TextInputType.emailAddress,
         textCapitalization: TextCapitalization.none,
@@ -831,6 +800,7 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
       child: TextField(
         controller: _usernameController,
+        focusNode: _usernameFocusNode,
         onChanged: (value) {
           String cleanUsername = value.toLowerCase().replaceAll(
             RegExp(r'[^a-z0-9_]'),
@@ -845,6 +815,9 @@ class _SignupScreenState extends State<SignupScreen> {
             );
           }
           _onUsernameChanged(cleanUsername);
+          if (_usernameError == "*") {
+            setState(() => _usernameError = null);
+          }
         },
         keyboardType: TextInputType.text,
         textCapitalization: TextCapitalization.none,
@@ -888,8 +861,14 @@ class _SignupScreenState extends State<SignupScreen> {
           Expanded(
             child: TextField(
               controller: _passwordController,
+              focusNode: _passwordFocusNode,
               obscureText: _obscurePassword,
-              onChanged: (_) => _validateInputs(),
+              onChanged: (_) {
+                _fieldTouched['password'] = true;
+                if (_passwordError == "*") {
+                  setState(() => _passwordError = null);
+                }
+              },
               style: const TextStyle(color: AppColors.textMain, fontSize: 16),
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMain),
@@ -947,8 +926,14 @@ class _SignupScreenState extends State<SignupScreen> {
           Expanded(
             child: TextField(
               controller: _confirmPasswordController,
+              focusNode: _confirmPasswordFocusNode,
               obscureText: _obscureConfirmPassword,
-              onChanged: (_) => _validateInputs(),
+              onChanged: (_) {
+                _fieldTouched['confirmPassword'] = true;
+                if (_confirmPasswordError == "*") {
+                  setState(() => _confirmPasswordError = null);
+                }
+              },
               style: const TextStyle(color: AppColors.textMain, fontSize: 16),
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMain),
@@ -993,6 +978,7 @@ class _SignupScreenState extends State<SignupScreen> {
       ),
       child: TextField(
         controller: _phoneController,
+        focusNode: _phoneFocusNode,
         onChanged: (value) {
           final digitsOnly = value.replaceAll(RegExp(r'[^0-9]'), '');
           if (value != digitsOnly) {
@@ -1001,7 +987,10 @@ class _SignupScreenState extends State<SignupScreen> {
               selection: TextSelection.collapsed(offset: digitsOnly.length),
             );
           }
-          _validateInputs();
+          _fieldTouched['phone'] = true;
+          if (_phoneError == "*") {
+            setState(() => _phoneError = null);
+          }
         },
         keyboardType: TextInputType.phone,
         style: const TextStyle(color: AppColors.textMain, fontSize: 16),
@@ -1098,9 +1087,9 @@ class _SignupScreenState extends State<SignupScreen> {
       onPressed: () {
         setState(() {
           _selectedGender = gender;
+          _fieldTouched['gender'] = true;
           _genderError = null;
         });
-        _validateInputs();
       },
       style: OutlinedButton.styleFrom(
         backgroundColor: isSelected ? AppColors.primary.withOpacity(0.1) : null,
@@ -1128,46 +1117,6 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  Widget _buildRecoveryEmailField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0F0F0),
-        borderRadius: BorderRadius.circular(12),
-        border: _recoveryEmailError != null ? Border.all(color: Colors.red, width: 1.5) : null,
-      ),
-      child: TextField(
-        controller: _recoveryEmailController,
-        onChanged: (value) {
-          final cleanEmail = value.toLowerCase().replaceAll(' ', '');
-          if (value != cleanEmail) {
-            _recoveryEmailController.value = TextEditingValue(
-              text: cleanEmail,
-              selection: TextSelection.collapsed(offset: cleanEmail.length),
-            );
-          }
-          _validateInputs();
-        },
-        keyboardType: TextInputType.emailAddress,
-        textCapitalization: TextCapitalization.none,
-        style: const TextStyle(color: AppColors.textMain, fontSize: 16),
-        decoration: InputDecoration(
-          prefixIcon: const Icon(Icons.email, color: AppColors.textMain),
-          hintText: "Recovery Email",
-          hintStyle: const TextStyle(color: Colors.grey),
-          errorText: _recoveryEmailError,
-          errorStyle: const TextStyle(color: Colors.red, fontSize: 12),
-          filled: true,
-          fillColor: Colors.transparent,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-      ),
-    );
-  }
-
   Widget _buildTermsSection() {
     return Column(
       children: [
@@ -1177,7 +1126,6 @@ class _SignupScreenState extends State<SignupScreen> {
               value: _agreeToTerms,
               onChanged: (value) {
                 setState(() => _agreeToTerms = value ?? false);
-                _validateInputs();
               },
               activeColor: AppColors.primary,
             ),
@@ -1185,7 +1133,6 @@ class _SignupScreenState extends State<SignupScreen> {
               child: GestureDetector(
                 onTap: () {
                   setState(() => _agreeToTerms = !_agreeToTerms);
-                  _validateInputs();
                 },
                 child: const Text.rich(
                   TextSpan(

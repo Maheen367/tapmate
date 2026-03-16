@@ -8,6 +8,11 @@ class SearchService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  // Cache for user data to reduce Firestore reads
+  final Map<String, Map<String, dynamic>> _userCache = {};
+  final Map<String, DateTime> _cacheTimestamps = {};
+  final Duration _cacheDuration = const Duration(minutes: 5);
+
   // 1. SEARCH USERS by name or username
   Future<List<Map<String, dynamic>>> searchUsers(String query) async {
     if (query.trim().isEmpty) return [];
@@ -15,7 +20,7 @@ class SearchService {
     try {
       String searchQuery = query.toLowerCase().trim();
 
-      // Search by username (exact match starts with)
+      // Search by username
       QuerySnapshot usernameSnapshot = await _firestore
           .collection('users')
           .where('username', isGreaterThanOrEqualTo: searchQuery)
@@ -63,6 +68,9 @@ class SearchService {
         }
       }
 
+      // Track search analytics
+      await _trackSearch(query, 'user');
+
       return results;
     } catch (e) {
       print('Error searching users: $e');
@@ -70,14 +78,13 @@ class SearchService {
     }
   }
 
-  // 2. SEARCH POSTS/VIDEOS
+  // 2. SEARCH POSTS/VIDEOS with pagination support
   Future<List<Map<String, dynamic>>> searchPosts(String query, {String? platform}) async {
     if (query.trim().isEmpty) return [];
 
     try {
       String searchQuery = query.toLowerCase().trim();
 
-      // Build query
       Query postQuery = _firestore.collection('posts');
 
       // Apply platform filter
@@ -93,18 +100,13 @@ class SearchService {
           .limit(20)
           .get();
 
-      // Get user details for each post
+      // Get user details for each post (with caching)
       List<Map<String, dynamic>> results = [];
       for (var doc in postSnapshot.docs) {
         Map<String, dynamic> postData = doc.data() as Map<String, dynamic>;
 
-        // Get user info
-        DocumentSnapshot userDoc = await _firestore
-            .collection('users')
-            .doc(postData['userId'])
-            .get();
-
-        Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>? ?? {};
+        // Get user info from cache or firestore
+        Map<String, dynamic> userData = await _getCachedUserData(postData['userId']);
 
         results.add({
           'id': doc.id,
@@ -115,6 +117,9 @@ class SearchService {
           'type': 'post',
         });
       }
+
+      // Track search analytics
+      await _trackSearch(query, 'post', platform: platform);
 
       return results;
     } catch (e) {
@@ -123,44 +128,142 @@ class SearchService {
     }
   }
 
-  // 3. GET TRENDING POSTS
+  // 3. GET TRENDING POSTS (improved algorithm)
   Future<List<Map<String, dynamic>>> getTrendingPosts() async {
     try {
+      // Get posts from last 7 days
+      DateTime weekAgo = DateTime.now().subtract(const Duration(days: 7));
+
       QuerySnapshot snapshot = await _firestore
           .collection('posts')
-          .orderBy('likes', descending: true)
-          .limit(10)
+          .where('createdAt', isGreaterThan: Timestamp.fromDate(weekAgo))
+          .orderBy('createdAt', descending: true)
+          .limit(50)
           .get();
 
-      List<Map<String, dynamic>> results = [];
+      List<Map<String, dynamic>> posts = [];
+
       for (var doc in snapshot.docs) {
         Map<String, dynamic> postData = doc.data() as Map<String, dynamic>;
 
-        DocumentSnapshot userDoc = await _firestore
-            .collection('users')
-            .doc(postData['userId'])
-            .get();
+        // Get user data from cache
+        Map<String, dynamic> userData = await _getCachedUserData(postData['userId']);
 
-        Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>? ?? {};
+        // Calculate trending score
+        int likes = postData['likes'] ?? 0;
+        int comments = postData['comments'] ?? 0;
+        int shares = postData['shares'] ?? 0;
 
-        results.add({
+        Timestamp? createdAt = postData['createdAt'] as Timestamp?;
+        double recencyBonus = 0;
+        if (createdAt != null) {
+          int hoursAgo = DateTime.now().difference(createdAt.toDate()).inHours;
+          recencyBonus = (24 / (hoursAgo + 1)) * 10; // More recent = higher score
+        }
+
+        double trendingScore = likes + (comments * 2) + (shares * 3) + recencyBonus;
+
+        posts.add({
           'id': doc.id,
           ...postData,
           'user_name': userData['name'] ?? 'Unknown',
           'user_username': userData['username'] ?? '',
           'user_profile_pic': userData['profilePic'] ?? userData['photoURL'] ?? '',
+          'trendingScore': trendingScore,
           'type': 'post',
         });
       }
 
-      return results;
+      // Sort by trending score and return top 10
+      posts.sort((a, b) => b['trendingScore'].compareTo(a['trendingScore']));
+      return posts.take(10).toList();
+
     } catch (e) {
       print('Error getting trending posts: $e');
       return [];
     }
   }
 
-  // 4. SAVE SEARCH HISTORY
+  // 4. GET TRENDING SEARCHES (from analytics)
+  Future<List<String>> getTrendingSearches() async {
+    try {
+      // Get searches from last 24 hours
+      DateTime yesterday = DateTime.now().subtract(const Duration(days: 1));
+
+      QuerySnapshot snapshot = await _firestore
+          .collection('search_analytics')
+          .where('timestamp', isGreaterThan: Timestamp.fromDate(yesterday))
+          .orderBy('timestamp', descending: false)
+          .limit(100)
+          .get();
+
+      // Count occurrences
+      Map<String, int> searchCounts = {};
+      for (var doc in snapshot.docs) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        String query = data['query'] as String;
+        searchCounts[query] = (searchCounts[query] ?? 0) + 1;
+      }
+
+      // Sort by count and return top 8
+      var sortedSearches = searchCounts.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+
+      if (sortedSearches.isEmpty) {
+        return _getDefaultTrendingSearches();
+      }
+
+      return sortedSearches.take(8).map((e) => e.key).toList();
+
+    } catch (e) {
+      print('Error getting trending searches: $e');
+      return _getDefaultTrendingSearches();
+    }
+  }
+
+  // 5. GET CATEGORIES WITH REAL COUNTS
+  Future<List<Map<String, dynamic>>> getCategories() async {
+    try {
+      List<Map<String, dynamic>> categories = [
+        {'name': 'Music', 'icon': Icons.music_note, 'tag': 'music', 'color': Colors.purple},
+        {'name': 'Gaming', 'icon': Icons.sports_esports, 'tag': 'gaming', 'color': Colors.blue},
+        {'name': 'Education', 'icon': Icons.book, 'tag': 'education', 'color': Colors.green},
+        {'name': 'Movies', 'icon': Icons.movie, 'tag': 'movies', 'color': Colors.red},
+        {'name': 'Fitness', 'icon': Icons.fitness_center, 'tag': 'fitness', 'color': Colors.orange},
+        {'name': 'Travel', 'icon': Icons.travel_explore, 'tag': 'travel', 'color': Colors.teal},
+        {'name': 'Comedy', 'icon': Icons.theaters, 'tag': 'comedy', 'color': Colors.amber},
+        {'name': 'Tech', 'icon': Icons.computer, 'tag': 'tech', 'color': Colors.indigo},
+      ];
+
+      // Get real counts from posts
+      for (var category in categories) {
+        try {
+          QuerySnapshot countSnapshot = await _firestore
+              .collection('posts')
+              .where('category', isEqualTo: category['tag'])
+              .where('createdAt', isGreaterThan: Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 30))))
+              .limit(1000)
+              .get();
+
+          int count = countSnapshot.docs.length;
+          category['count'] = _formatCount(count);
+          category['rawCount'] = count;
+        } catch (e) {
+          // If category field doesn't exist, use sample data
+          category['count'] = _getSampleCount(category['name']);
+          category['rawCount'] = 1000;
+        }
+      }
+
+      return categories;
+
+    } catch (e) {
+      print('Error getting categories: $e');
+      return _getDefaultCategories();
+    }
+  }
+
+  // 6. SAVE SEARCH HISTORY (existing)
   Future<void> saveSearchHistory(String query) async {
     try {
       User? user = _auth.currentUser;
@@ -178,12 +281,10 @@ class SearchService {
           .get();
 
       if (existing.docs.isNotEmpty) {
-        // Update existing search's timestamp
         await existing.docs.first.reference.update({
           'timestamp': FieldValue.serverTimestamp(),
         });
       } else {
-        // Add new search history
         await _firestore
             .collection('users')
             .doc(userId)
@@ -202,7 +303,6 @@ class SearchService {
             .get();
 
         if (oldSearches.docs.length > 20) {
-          // Delete oldest searches
           for (int i = 20; i < oldSearches.docs.length; i++) {
             await oldSearches.docs[i].reference.delete();
           }
@@ -213,7 +313,7 @@ class SearchService {
     }
   }
 
-  // 5. GET USER SEARCH HISTORY
+  // 7. GET USER SEARCH HISTORY (existing)
   Future<List<String>> getSearchHistory() async {
     try {
       User? user = _auth.currentUser;
@@ -236,7 +336,7 @@ class SearchService {
     }
   }
 
-  // 6. CLEAR SEARCH HISTORY
+  // 8. CLEAR SEARCH HISTORY (existing)
   Future<void> clearSearchHistory() async {
     try {
       User? user = _auth.currentUser;
@@ -256,7 +356,7 @@ class SearchService {
     }
   }
 
-  // 7. DELETE SINGLE SEARCH ITEM
+  // 9. DELETE SINGLE SEARCH ITEM (existing)
   Future<void> deleteSearchItem(String query) async {
     try {
       User? user = _auth.currentUser;
@@ -277,36 +377,195 @@ class SearchService {
     }
   }
 
-  // 8. GET TRENDING SEARCHES (from analytics)
-  Future<List<String>> getTrendingSearches() async {
+  // 10. GET SUGGESTIONS (new)
+  Future<List<String>> getSearchSuggestions(String query) async {
+    if (query.trim().isEmpty) return [];
+
     try {
-      // You can implement this based on your needs
-      // For now, return some default trending searches
-      return [
-        "Music Videos",
-        "Gaming",
-        "Cooking Tutorials",
-        "Travel Vlogs",
-        "Fitness",
-        "Tech Reviews",
-        "Comedy",
-        "Education",
-      ];
+      String searchQuery = query.toLowerCase().trim();
+
+      // Get from trending searches that match
+      QuerySnapshot snapshot = await _firestore
+          .collection('search_analytics')
+          .where('query', isGreaterThanOrEqualTo: searchQuery)
+          .where('query', isLessThanOrEqualTo: searchQuery + '\uf8ff')
+          .orderBy('query')
+          .limit(5)
+          .get();
+
+      Set<String> suggestions = {};
+      for (var doc in snapshot.docs) {
+        suggestions.add((doc.data() as Map<String, dynamic>)['query'] as String);
+      }
+
+      return suggestions.toList();
+
     } catch (e) {
-      print('Error getting trending searches: $e');
+      print('Error getting suggestions: $e');
       return [];
     }
   }
 
-  // 9. GET CATEGORIES WITH COUNTS
-  Future<List<Map<String, dynamic>>> getCategories() async {
+  // 11. GET POST BY ID (new)
+  Future<Map<String, dynamic>?> getPostById(String postId) async {
+    try {
+      DocumentSnapshot doc = await _firestore
+          .collection('posts')
+          .doc(postId)
+          .get();
+
+      if (!doc.exists) return null;
+
+      Map<String, dynamic> postData = doc.data() as Map<String, dynamic>;
+      Map<String, dynamic> userData = await _getCachedUserData(postData['userId']);
+
+      return {
+        'id': doc.id,
+        ...postData,
+        'user_name': userData['name'] ?? 'Unknown',
+        'user_username': userData['username'] ?? '',
+        'user_profile_pic': userData['profilePic'] ?? userData['photoURL'] ?? '',
+      };
+
+    } catch (e) {
+      print('Error getting post: $e');
+      return null;
+    }
+  }
+
+  // 12. GET USER BY ID (new)
+  Future<Map<String, dynamic>?> getUserById(String userId) async {
+    try {
+      DocumentSnapshot doc = await _firestore
+          .collection('users')
+          .doc(userId)
+          .get();
+
+      if (!doc.exists) return null;
+
+      return {
+        'id': doc.id,
+        ...doc.data() as Map<String, dynamic>,
+      };
+
+    } catch (e) {
+      print('Error getting user: $e');
+      return null;
+    }
+  }
+
+  // ========== PRIVATE HELPER METHODS ==========
+
+  // Track search for analytics
+  Future<void> _trackSearch(String query, String type, {String? platform}) async {
+    try {
+      if (query.trim().isEmpty) return;
+
+      await _firestore.collection('search_analytics').add({
+        'query': query.toLowerCase().trim(),
+        'type': type,
+        'platform': platform,
+        'timestamp': FieldValue.serverTimestamp(),
+        'userId': _auth.currentUser?.uid ?? 'anonymous',
+      });
+
+      // Update trending counts (daily aggregate)
+      String today = DateTime.now().toIso8601String().split('T')[0];
+      await _firestore
+          .collection('trending_searches')
+          .doc(today)
+          .collection('searches')
+          .doc(query.toLowerCase().trim())
+          .set({
+        'query': query.toLowerCase().trim(),
+        'count': FieldValue.increment(1),
+        'lastSearched': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+    } catch (e) {
+      print('Error tracking search: $e');
+    }
+  }
+
+  // Get cached user data
+  Future<Map<String, dynamic>> _getCachedUserData(String userId) async {
+    // Check cache
+    if (_userCache.containsKey(userId)) {
+      DateTime timestamp = _cacheTimestamps[userId] ?? DateTime.now();
+      if (DateTime.now().difference(timestamp) < _cacheDuration) {
+        return _userCache[userId]!;
+      }
+    }
+
+    try {
+      // Fetch from Firestore
+      DocumentSnapshot userDoc = await _firestore
+          .collection('users')
+          .doc(userId)
+          .get();
+
+      Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>? ?? {};
+
+      // Update cache
+      _userCache[userId] = userData;
+      _cacheTimestamps[userId] = DateTime.now();
+
+      return userData;
+
+    } catch (e) {
+      print('Error fetching user data: $e');
+      return {};
+    }
+  }
+
+  // Format count (e.g., 1500 -> 1.5k)
+  String _formatCount(int count) {
+    if (count >= 1000000) {
+      return '${(count / 1000000).toStringAsFixed(1)}M';
+    } else if (count >= 1000) {
+      return '${(count / 1000).toStringAsFixed(1)}k';
+    }
+    return count.toString();
+  }
+
+  // Sample count for categories
+  String _getSampleCount(String category) {
+    Map<String, String> sampleCounts = {
+      'Music': '1.2k',
+      'Gaming': '890k',
+      'Education': '650k',
+      'Movies': '1.8k',
+      'Fitness': '540k',
+      'Travel': '720k',
+      'Comedy': '930k',
+      'Tech': '410k',
+    };
+    return sampleCounts[category] ?? '1.0k';
+  }
+
+  // Default categories fallback
+  List<Map<String, dynamic>> _getDefaultCategories() {
     return [
-      {'name': 'Music', 'icon': Icons.music_note, 'count': '1.2k'},
-      {'name': 'Gaming', 'icon': Icons.sports_esports, 'count': '890k'},
-      {'name': 'Education', 'icon': Icons.book, 'count': '650k'},
-      {'name': 'Movies', 'icon': Icons.movie, 'count': '1.8k'},
-      {'name': 'Fitness', 'icon': Icons.fitness_center, 'count': '540k'},
-      {'name': 'Travel', 'icon': Icons.travel_explore, 'count': '720k'},
+      {'name': 'Music', 'icon': Icons.music_note, 'count': '1.2k', 'color': Colors.purple},
+      {'name': 'Gaming', 'icon': Icons.sports_esports, 'count': '890k', 'color': Colors.blue},
+      {'name': 'Education', 'icon': Icons.book, 'count': '650k', 'color': Colors.green},
+      {'name': 'Movies', 'icon': Icons.movie, 'count': '1.8k', 'color': Colors.red},
+      {'name': 'Fitness', 'icon': Icons.fitness_center, 'count': '540k', 'color': Colors.orange},
+      {'name': 'Travel', 'icon': Icons.travel_explore, 'count': '720k', 'color': Colors.teal},
+    ];
+  }
+
+  // Default trending searches fallback
+  List<String> _getDefaultTrendingSearches() {
+    return [
+      "Music Videos",
+      "Gaming",
+      "Cooking Tutorials",
+      "Travel Vlogs",
+      "Fitness",
+      "Tech Reviews",
+      "Comedy",
+      "Education",
     ];
   }
 }

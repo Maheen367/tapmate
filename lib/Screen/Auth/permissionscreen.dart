@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart'; // 🔥 ADD THIS IM
 import 'package:tapmate/Screen/constants/app_colors.dart';
 import 'package:tapmate/Screen/home/home_screen.dart';
 import '../../auth_provider.dart';
+import '../home/tour_screen.dart';
 
 class PermissionScreen extends StatefulWidget {
   const PermissionScreen({super.key});

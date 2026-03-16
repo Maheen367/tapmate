@@ -1,3 +1,4 @@
+// lib/services/chat_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -124,6 +125,61 @@ class ChatService {
     }
   }
 
+  // ==================== BLOCK CHECK FUNCTIONS ====================
+  Future<bool> isUserBlocked(String otherUserId) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) return false;
+
+    try {
+      final userDoc = await _firestore
+          .collection('users')
+          .doc(currentUser.uid)
+          .get();
+
+      if (!userDoc.exists) return false;
+
+      final data = userDoc.data() as Map<String, dynamic>;
+      final blockedUsers = List<String>.from(data['blockedUsers'] ?? []);
+
+      return blockedUsers.contains(otherUserId);
+    } catch (e) {
+      print('Error checking block status: $e');
+      return false;
+    }
+  }
+
+  Future<bool> isUserBlocker(String otherUserId) async {
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) return false;
+
+    try {
+      final otherUserDoc = await _firestore
+          .collection('users')
+          .doc(otherUserId)
+          .get();
+
+      if (!otherUserDoc.exists) return false;
+
+      final data = otherUserDoc.data() as Map<String, dynamic>;
+      final blockedUsers = List<String>.from(data['blockedUsers'] ?? []);
+
+      return blockedUsers.contains(currentUser.uid);
+    } catch (e) {
+      print('Error checking blocker status: $e');
+      return false;
+    }
+  }
+
+  Future<Map<String, bool>> getBlockStatus(String otherUserId) async {
+    final isBlocked = await isUserBlocked(otherUserId);
+    final isBlocker = await isUserBlocker(otherUserId);
+
+    return {
+      'isBlocked': isBlocked,
+      'isBlocker': isBlocker,
+    };
+  }
+
   // ==================== MESSAGE FEATURES ====================
 
   // GET MESSAGES FOR A CHAT
@@ -188,7 +244,7 @@ class ChatService {
           });
         }
 
-        // 🔥 NEW: Add document-specific fields
+        // Add document-specific fields
         if (data['type'] == 'document') {
           messageMap.addAll({
             'documentUrl': data['documentUrl']?.toString() ?? '',
@@ -516,7 +572,7 @@ class ChatService {
     }
   }
 
-  // 🔥 NEW: SEND DOCUMENT MESSAGE
+  // SEND DOCUMENT MESSAGE
   Future<void> sendDocumentMessage(String chatId, File documentFile) async {
     User? currentUser = _auth.currentUser;
     if (currentUser == null) throw Exception('No user logged in');
@@ -685,7 +741,7 @@ class ChatService {
     }
   }
 
-  // 🔥 NEW: DOWNLOAD DOCUMENT FILE
+  // DOWNLOAD DOCUMENT FILE
   Future<File?> downloadDocumentFile(String documentUrl, String fileName) async {
     try {
       print('📥 Downloading document from: $documentUrl');
@@ -940,32 +996,6 @@ class ChatService {
       print('✅ Conversation cleared: $chatId');
     } catch (e) {
       print('Error clearing conversation: $e');
-      rethrow;
-    }
-  }
-
-  // BLOCK USER
-  Future<void> blockUser(String userId) async {
-    User? currentUser = _auth.currentUser;
-    if (currentUser == null) return;
-
-    try {
-      await _firestore
-          .collection('users')
-          .doc(currentUser.uid)
-          .update({
-        'blocked_users': FieldValue.arrayUnion([userId])
-      });
-
-      await _firestore.collection('blocks').add({
-        'blocked_by': currentUser.uid,
-        'blocked_user': userId,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-
-      print('✅ User blocked: $userId');
-    } catch (e) {
-      print('Error blocking user: $e');
       rethrow;
     }
   }

@@ -163,52 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // 🔥 Facebook Login Handler with Flag Save
-  Future<void> _handleFacebookLogin() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
 
-    try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final result = await authProvider.signInWithFacebook();
-
-      if (result['success'] == true) {
-        // 🔥🔥🔥 SAVE LOGIN FLAG HERE 🔥🔥🔥
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isLoggedIn', true);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Facebook sign in successful!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-
-          // 🔥 YAHAN BHI YAHI CHANGE
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const AuthWrapper()),
-          );
-        }
-      } else {
-        setState(() {
-          _errorMessage = result['message'];
-        });
-      }
-    } catch (e) {
-      setState(() {
-        _errorMessage = 'Facebook sign in failed';
-      });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
 
   // Guest Login Handler
   void _handleGuestLogin() {

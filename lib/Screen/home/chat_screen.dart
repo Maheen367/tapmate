@@ -16,6 +16,7 @@ import 'package:tapmate/Screen/home/video_player_screen.dart';
 // 🔥 Agora Call Service
 import '../../auth_provider.dart';
 import '../../theme_provider.dart';
+
 import 'package:tapmate/Screen/constants/app_colors.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:record/record.dart';
@@ -25,6 +26,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:open_filex/open_filex.dart';
 
+import '../../utils/settings_provider.dart';
 import '../services/call_service.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -91,6 +93,11 @@ class _ChatScreenState extends State<ChatScreen>
   Timer? _waveformTimer;
   final Random _random = Random();
 
+  // 👇 BLOCK USER VARIABLES
+  bool _isBlocked = false;
+  bool _isBlocker = false;
+  bool _isCheckingBlock = true;
+
   @override
   void initState() {
     super.initState();
@@ -131,6 +138,30 @@ class _ChatScreenState extends State<ChatScreen>
 
     // Check and request permissions for recording
     _checkPermissions();
+  }
+
+  // 👇 ADD THIS FUNCTION - Check block status
+  Future<void> _checkBlockStatus() async {
+    if (_currentUserId.isEmpty) {
+      setState(() => _isCheckingBlock = false);
+      return;
+    }
+
+    try {
+      final isBlocked = await _chatService.isUserBlocked(_currentUserId);
+      final isBlocker = await _chatService.isUserBlocker(_currentUserId);
+
+      if (mounted) {
+        setState(() {
+          _isBlocked = isBlocked;
+          _isBlocker = isBlocker;
+          _isCheckingBlock = false;
+        });
+      }
+    } catch (e) {
+      print('Error checking block status: $e');
+      setState(() => _isCheckingBlock = false);
+    }
   }
 
   // Check recording permissions
@@ -176,6 +207,9 @@ class _ChatScreenState extends State<ChatScreen>
 
     _chatService.markMessagesAsRead(chatId);
 
+    // 👇 Check block status when opening chat
+    _checkBlockStatus();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
     });
@@ -218,6 +252,9 @@ class _ChatScreenState extends State<ChatScreen>
 
     _chatService.markMessagesAsRead(_currentChatId);
 
+    // 👇 Check block status when opening chat
+    _checkBlockStatus();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToBottom();
     });
@@ -234,12 +271,32 @@ class _ChatScreenState extends State<ChatScreen>
     });
   }
 
-  // Send message with debounce (NO LOADING INDICATOR)
+  // 👇 UPDATE _sendMessage function with block checks
   Future<void> _sendMessage() async {
     final message = _messageController.text.trim();
     if (message.isEmpty || _currentChatId.isEmpty || _isSending) return;
 
-    // Don't show loading indicator, just block multiple sends
+    // 👇 BLOCK CHECKS
+    if (_isBlocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You have blocked this user. Unblock to send messages.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_isBlocker) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You cannot message this user.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     _isSending = true;
 
     try {
@@ -257,13 +314,24 @@ class _ChatScreenState extends State<ChatScreen>
       }
     } finally {
       if (mounted) {
-        _isSending = false; // Release block
+        _isSending = false;
       }
     }
   }
 
   // Start recording voice message
   Future<void> _startRecording() async {
+    // 👇 BLOCK CHECK
+    if (_isBlocked || _isBlocker) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isBlocked ? 'You have blocked this user' : 'You cannot message this user'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     try {
       // Check permission
       PermissionStatus status = await Permission.microphone.status;
@@ -502,6 +570,17 @@ class _ChatScreenState extends State<ChatScreen>
 
   // Pick image from gallery
   Future<void> _pickImage() async {
+    // 👇 BLOCK CHECK
+    if (_isBlocked || _isBlocker) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isBlocked ? 'You have blocked this user' : 'You cannot message this user'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     try {
       final XFile? pickedFile = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -529,6 +608,17 @@ class _ChatScreenState extends State<ChatScreen>
 
   // Pick video from gallery
   Future<void> _pickVideo() async {
+    // 👇 BLOCK CHECK
+    if (_isBlocked || _isBlocker) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isBlocked ? 'You have blocked this user' : 'You cannot message this user'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     try {
       final XFile? pickedFile = await _imagePicker.pickVideo(
         source: ImageSource.gallery,
@@ -554,6 +644,17 @@ class _ChatScreenState extends State<ChatScreen>
 
   // Take photo with camera
   Future<void> _takePhoto() async {
+    // 👇 BLOCK CHECK
+    if (_isBlocked || _isBlocker) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isBlocked ? 'You have blocked this user' : 'You cannot message this user'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     try {
       final XFile? pickedFile = await _imagePicker.pickImage(
         source: ImageSource.camera,
@@ -581,6 +682,17 @@ class _ChatScreenState extends State<ChatScreen>
 
   // Record video with camera
   Future<void> _recordVideo() async {
+    // 👇 BLOCK CHECK
+    if (_isBlocked || _isBlocker) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isBlocked ? 'You have blocked this user' : 'You cannot message this user'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     try {
       final XFile? pickedFile = await _imagePicker.pickVideo(
         source: ImageSource.camera,
@@ -606,6 +718,17 @@ class _ChatScreenState extends State<ChatScreen>
 
 // 🔥 ULTIMATE FIXED: Document picker with guaranteed working
   Future<void> _pickDocument() async {
+    // 👇 BLOCK CHECK
+    if (_isBlocked || _isBlocker) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isBlocked ? 'You have blocked this user' : 'You cannot message this user'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     try {
       setState(() => _isSendingMedia = true);
 
@@ -1204,6 +1327,27 @@ class _ChatScreenState extends State<ChatScreen>
 
 // 🔥 UPDATED: Video call method with Agora
   void _startVideoCall() async {
+    // 👇 BLOCK CHECK
+    if (_isBlocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You cannot call a blocked user'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_isBlocker) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This user has blocked you'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     String channelName = 'call_${_currentChatId}_${DateTime.now().millisecondsSinceEpoch}';
 
     // Get user avatar
@@ -1228,6 +1372,27 @@ class _ChatScreenState extends State<ChatScreen>
 
 // 🔥 UPDATED: Voice call method with Agora
   void _startVoiceCall() async {
+    // 👇 BLOCK CHECK
+    if (_isBlocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You cannot call a blocked user'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_isBlocker) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This user has blocked you'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     String channelName = 'call_${_currentChatId}_${DateTime.now().millisecondsSinceEpoch}';
 
     // Get user avatar
@@ -1317,13 +1482,19 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
+  // 👇 UPDATE _blockUser function
   void _blockUser() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Block User'),
         content: Text(
-          'Are you sure you want to block ${_currentChatUser['name'] ?? 'this user'}?',
+          'Are you sure you want to block ${_currentChatUser['name'] ?? 'this user'}?\n\n'
+              'They will not be able to:\n'
+              '• Send you messages\n'
+              '• View your profile\n'
+              '• Follow you\n'
+              '• See your posts',
         ),
         actions: [
           TextButton(
@@ -1334,7 +1505,15 @@ class _ChatScreenState extends State<ChatScreen>
             onPressed: () async {
               Navigator.pop(context);
               try {
-                await _chatService.blockUser(_currentUserId);
+                // 👇 Use SettingsProvider to block user
+                final settingsProvider = Provider.of<SettingsProvider>(
+                    context,
+                    listen: false
+                );
+                await settingsProvider.settingsService.blockUser(_currentUserId);
+
+                setState(() => _isBlocked = true);
+
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -1344,7 +1523,6 @@ class _ChatScreenState extends State<ChatScreen>
                     ),
                   );
                 }
-                _goBackToChatList();
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -1357,10 +1535,7 @@ class _ChatScreenState extends State<ChatScreen>
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text(
-              'Block',
-              style: TextStyle(color: AppColors.lightSurface),
-            ),
+            child: const Text('Block'),
           ),
         ],
       ),
@@ -1718,6 +1893,69 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
+  // 👇 ADD THIS FUNCTION - Blocked View
+  Widget _buildBlockedView(bool isDarkMode) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              _isBlocked ? Icons.block : Icons.do_not_disturb,
+              size: 80,
+              color: _isBlocked ? Colors.red : Colors.orange,
+            ),
+            const SizedBox(height: 20),
+            Text(
+              _isBlocked ? 'You blocked this user' : 'You cannot message this user',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              _isBlocked
+                  ? 'You have blocked this user. Unblock to start messaging again.'
+                  : 'This user has blocked you. You cannot send messages.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 30),
+            if (_isBlocked)
+              ElevatedButton.icon(
+                onPressed: () async {
+                  final provider = Provider.of<SettingsProvider>(
+                      context,
+                      listen: false
+                  );
+                  await provider.unblockUser(_currentUserId);
+                  setState(() {
+                    _isBlocked = false;
+                    _isBlocker = false;
+                  });
+                },
+                icon: const Icon(Icons.block_outlined),
+                label: const Text('Unblock User'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 30,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
@@ -1796,7 +2034,7 @@ class _ChatScreenState extends State<ChatScreen>
                     _buildCallsTab(isDarkMode),
                   ],
                 )
-                    : _buildChatDetailView(isDarkMode),
+                    : _buildChatDetailView(isDarkMode), // 👈 This will handle blocked view
               ),
               if (_currentChatId.isEmpty)
                 SafeArea(
@@ -2002,7 +2240,7 @@ class _ChatScreenState extends State<ChatScreen>
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (_currentChatId.isNotEmpty)
+                      if (_currentChatId.isNotEmpty && !_isBlocked && !_isBlocker)
                         StreamBuilder<DocumentSnapshot>(
                           stream: FirebaseFirestore.instance
                               .collection('users')
@@ -2040,7 +2278,7 @@ class _ChatScreenState extends State<ChatScreen>
                 Navigator.pushNamed(context, '/search');
               },
             )
-          else
+          else if (!_isBlocked && !_isBlocker) // 👇 Only show options if not blocked
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, color: AppColors.lightSurface),
               onSelected: (value) {
@@ -2873,8 +3111,17 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
-  // Chat Detail View with proper layout
+  // 👇 UPDATE _buildChatDetailView with block checks
   Widget _buildChatDetailView(bool isDarkMode) {
+    // 👇 Add block checks
+    if (_isCheckingBlock) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_isBlocked || _isBlocker) {
+      return _buildBlockedView(isDarkMode);
+    }
+
     return Column(
       children: [
         Expanded(
@@ -3793,6 +4040,11 @@ class _ChatScreenState extends State<ChatScreen>
 
   // Message Input with waveform and NO SHRINKING
   Widget _buildMessageInput(bool isDarkMode) {
+    // 👇 If blocked, don't show input
+    if (_isBlocked || _isBlocker) {
+      return const SizedBox();
+    }
+
     if (_isRecording) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

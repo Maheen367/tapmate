@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+
 import '../models/settings_user_model.dart';
 
 class SettingsService {
@@ -77,6 +78,101 @@ class SettingsService {
       }
       return blockedUsers;
     });
+  }
+
+  // ==================== COMPLETE BLOCK USER ====================
+  Future<void> blockUser(String userId) async {
+    if (currentUser == null) throw Exception('No user logged in');
+
+    try {
+      final currentUserRef = _firestore.collection('users').doc(currentUser!.uid);
+      final otherUserRef = _firestore.collection('users').doc(userId);
+
+      await _firestore.runTransaction((transaction) async {
+        final currentUserDoc = await transaction.get(currentUserRef);
+        final otherUserDoc = await transaction.get(otherUserRef);
+
+        if (!currentUserDoc.exists || !otherUserDoc.exists) return;
+
+        final currentUserData = currentUserDoc.data() as Map<String, dynamic>;
+
+        List<String> blocked = List<String>.from(currentUserData['blockedUsers'] ?? []);
+
+        if (!blocked.contains(userId)) {
+          blocked.add(userId);
+
+          // Update blocked users list
+          transaction.update(currentUserRef, {
+            'blockedUsers': blocked,
+            'blockedAt_$userId': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+
+          // Remove from followers/following
+          transaction.update(currentUserRef, {
+            'followers': FieldValue.arrayRemove([userId]),
+            'following': FieldValue.arrayRemove([userId]),
+          });
+
+          // Remove from other user's followers/following
+          transaction.update(otherUserRef, {
+            'followers': FieldValue.arrayRemove([currentUser!.uid]),
+            'following': FieldValue.arrayRemove([currentUser!.uid]),
+          });
+        }
+      });
+
+      // Delete all chat messages between users
+      await _deleteChatMessages(userId);
+
+      print('✅ User $userId blocked successfully');
+
+    } catch (e) {
+      print('❌ Error blocking user: $e');
+      rethrow;
+    }
+  }
+
+  // ==================== DELETE CHAT MESSAGES ====================
+  Future<void> _deleteChatMessages(String otherUserId) async {
+    if (currentUser == null) return;
+
+    try {
+      // Find chat between these two users
+      QuerySnapshot chats = await _firestore
+          .collection('chats')
+          .where('participants', arrayContains: currentUser!.uid)
+          .get();
+
+      for (var chatDoc in chats.docs) {
+        final chatData = chatDoc.data() as Map<String, dynamic>;
+        final participants = List<String>.from(chatData['participants'] ?? []);
+
+        // Agar chat sirf in dono users ke beech hai
+        if (participants.contains(otherUserId) && participants.length == 2) {
+          // Delete all messages in this chat
+          QuerySnapshot messages = await chatDoc.reference
+              .collection('messages')
+              .get();
+
+          WriteBatch batch = _firestore.batch();
+          for (var msg in messages.docs) {
+            batch.delete(msg.reference);
+          }
+          await batch.commit();
+
+          // Update chat to show it's blocked
+          await chatDoc.reference.update({
+            'isBlocked': true,
+            'blockedBy': currentUser!.uid,
+            'blockedAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }
+
+    } catch (e) {
+      print('Error deleting messages: $e');
+    }
   }
 
   Future<void> unblockUser(String userId) async {
